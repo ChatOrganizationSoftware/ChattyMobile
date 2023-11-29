@@ -24,6 +24,7 @@
         <activity android:name=".SignupPage"/>
         <activity android:name=".EmailVerificationPage"/>
         <activity android:name=".ForgotPasswordPage"/>
+        <activity android:name=".MainPage"/>
     </application>
 
 </manifest>
