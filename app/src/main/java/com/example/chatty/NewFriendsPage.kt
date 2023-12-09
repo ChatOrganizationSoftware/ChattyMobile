@@ -1,0 +1,98 @@
+package com.example.chatty
+
+import android.content.Intent
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.view.MenuItem
+import android.widget.TextView
+import androidx.appcompat.widget.Toolbar
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import com.squareup.picasso.Picasso
+import com.xwray.groupie.GroupAdapter
+import com.xwray.groupie.GroupieViewHolder
+import com.xwray.groupie.Item
+import de.hdodenhof.circleimageview.CircleImageView
+
+class NewFriendsPage : AppCompatActivity() {
+    private lateinit var recyclerView: RecyclerView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.new_friends_page)
+
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = "Select User"
+
+
+        recyclerView = findViewById(R.id.recyclerViewNewUsers)
+
+        fetchUsers()
+
+    }
+
+    companion object{
+        const val USER_KEY = "USER_KEY"
+    }
+
+    private fun fetchUsers(){
+        val ref = FirebaseDatabase.getInstance().getReference("/users").orderByChild("username")
+        ref.addListenerForSingleValueEvent(object: ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val groupAdapter = GroupAdapter<GroupieViewHolder>()
+                snapshot.children.forEach{
+                    val user = it.getValue(User::class.java)
+                    if (user != null && it.key != FirebaseAuth.getInstance().currentUser?.uid){
+                        groupAdapter.add(UserItem(user))
+                    }
+                }
+
+                groupAdapter.setOnItemClickListener { item, view ->
+                    val userItem = item as UserItem
+
+                    val intent = Intent(view.context, ChatPage::class.java)
+                    intent.putExtra(USER_KEY, item.user)
+                    startActivity(intent)
+
+                    finish()
+                }
+
+                recyclerView.adapter = groupAdapter
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+
+            }
+        })
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            android.R.id.home -> {
+                // onBackPressed() // Go back when the Up button is clicked
+                // return true
+                finish()
+            }
+            // Handle other menu items if needed
+        }
+        return super.onOptionsItemSelected(item)
+    }
+}
+
+class UserItem(val user: User): Item<GroupieViewHolder>(){
+    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = user.username
+        if(user.profilePhoto!="")
+            Picasso.get().load(user.profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
+    }
+
+    override fun getLayout(): Int {
+        return R.layout.new_friends_row
+    }
+}

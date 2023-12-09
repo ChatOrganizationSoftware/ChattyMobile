@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+    <item android:id="@+id/main_new_friends"
+        android:icon="@drawable/user_friends_solid"
+        android:title=""
+        app:showAsAction="ifRoom" />
+
+    <item android:id="@+id/main_options"
+        android:icon="@drawable/ellipsis_vertical_solid"
+        android:title=""
+        app:showAsAction="ifRoom">
+        <menu>
+            <item
+                android:id="@+id/main_profile"
+                android:title="Profile"
+                app:showAsAction="never" />
+            <item
+                android:id="@+id/main_settings"
+                android:title="Settings"
+                app:showAsAction="never" />
+            <item
+                android:id="@+id/main_signout"
+                android:title="Sign Out"
+                app:showAsAction="never" />
+        </menu>
+    </item>
+</menu>

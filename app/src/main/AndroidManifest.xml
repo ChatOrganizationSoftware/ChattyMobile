@@ -5,6 +5,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -16,6 +18,23 @@
         android:theme="@style/Theme.Chatty"
         tools:targetApi="31">
         <activity
+            android:name=".ChatPage"
+            android:exported="false"
+            android:parentActivityName=".MainPage"/>
+        <activity
+            android:name=".MainPage"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".NewFriendsPage"
+            android:exported="false"
+            android:parentActivityName=".MainPage" />
+        <activity
             android:name=".LoginPage"
             android:exported="true">
             <intent-filter>
@@ -24,12 +43,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".SignupPage"/>
-        <activity android:name=".EmailVerificationPage"/>
-        <activity android:name=".ForgotPasswordPage"/>
-        <activity android:name=".MainPage"/>
-        <activity android:name=".ProfilePage"/>
-        <activity android:name=".SettingsPage"/>
+        <activity android:name=".SignupPage" />
+        <activity android:name=".EmailVerificationPage" />
+        <activity android:name=".ForgotPasswordPage" />
+        <activity
+            android:name=".ProfilePage"
+            android:parentActivityName=".MainPage" />
+        <activity
+            android:name=".SettingsPage"
+            android:parentActivityName=".MainPage" />
+        <activity android:name=".UpdateProfile" />
     </application>
 
 </manifest>
