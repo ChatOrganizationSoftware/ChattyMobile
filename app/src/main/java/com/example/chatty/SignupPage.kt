@@ -1,37 +1,37 @@
 package com.example.chatty
 
+import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.method.HideReturnsTransformationMethod
 import android.text.method.PasswordTransformationMethod
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.gms.tasks.OnFailureListener
-import com.google.android.gms.tasks.OnSuccessListener
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.CollectionReference
-import com.google.firebase.firestore.DocumentReference
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.storage.FirebaseStorage
+import java.util.UUID
 
 
 class SignupPage : AppCompatActivity() {
 
-    private lateinit var auth: FirebaseAuth
-    private lateinit var database: CollectionReference
-
-    // Components on Page
-    private lateinit var nameEditText: EditText
-    private lateinit var emailEditText: EditText
-    private lateinit var passwordEditText: EditText
-    private lateinit var confirmEditText: EditText
+    private lateinit var nameField: EditText
+    private lateinit var emailField: EditText
+    private lateinit var passwordField: EditText
+    private lateinit var confirmField: EditText
+    private lateinit var signupEye1: ImageView
+    private lateinit var signupEye2: ImageView
     private lateinit var signUpButton: Button
     private lateinit var returnLoginButton: Button
-    private lateinit var eye1: ImageView
-    private lateinit var eye2: ImageView
+    private lateinit var selectPhotoButton: ImageView
+    private lateinit var selectPhotoText: TextView
+    private var selectedPhotoUri: Uri? = null
 
     private var showPassword = false
     private var showConfirm = false
@@ -40,88 +40,121 @@ class SignupPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.signup_page)
 
-        auth = FirebaseAuth.getInstance()
-
         // Components on Page
-        nameEditText = findViewById(R.id.nameField)
-        emailEditText = findViewById(R.id.emailField)
-        passwordEditText = findViewById(R.id.passwordField)
-        confirmEditText = findViewById(R.id.confirmPasswordField)
+        selectPhotoButton = findViewById(R.id.selectPhotoButton)
+        selectPhotoText = findViewById(R.id.selectPhotoTextSignup)
+        nameField = findViewById(R.id.nameField)
+        emailField = findViewById(R.id.emailField)
+        passwordField = findViewById(R.id.passwordField)
+        confirmField = findViewById(R.id.confirmPasswordField)
+        signupEye1 = findViewById(R.id.signupEye1)
+        signupEye2 = findViewById(R.id.signupEye2)
         signUpButton = findViewById(R.id.signUpButton)
         returnLoginButton = findViewById(R.id.returnLoginButton)
 
-        // Eye icons for show/hide password and confirm password
-        eye1 = findViewById(R.id.eye1)
-        eye2 = findViewById(R.id.eye2)
+
+        selectPhotoButton.setOnClickListener{
+            val intent = Intent(Intent.ACTION_PICK)
+            intent.type = "image/*"
+            startActivityForResult(intent, 0)
+        }
 
         // Show/hide Password
-        eye1.setOnClickListener{
+        signupEye1.setOnClickListener{
             if(!showPassword){
-                passwordEditText.transformationMethod = HideReturnsTransformationMethod.getInstance()
+                passwordField.transformationMethod = HideReturnsTransformationMethod.getInstance()
                 showPassword = true
             }
             else{
-                passwordEditText.transformationMethod = PasswordTransformationMethod.getInstance()
+                passwordField.transformationMethod = PasswordTransformationMethod.getInstance()
                 showPassword = false
             }
         }
 
         // Show/hide Confirm Password
-        eye2.setOnClickListener{
+        signupEye2.setOnClickListener{
             if(!showConfirm){
-                confirmEditText.transformationMethod = HideReturnsTransformationMethod()
+                confirmField.transformationMethod = HideReturnsTransformationMethod()
                 showConfirm = true
             }
             else{
-                confirmEditText.transformationMethod = PasswordTransformationMethod()
+                confirmField.transformationMethod = PasswordTransformationMethod()
                 showConfirm = false
             }
         }
 
         // Click listener for Continue Button
         signUpButton.setOnClickListener {
-            val userName = nameEditText.text.toString().trim()
-            val email = emailEditText.text.toString().trim()
-            val password = passwordEditText.text.toString().trim()
-            val confirmPassword = confirmEditText.text.toString().trim()
-
-            if(userName.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() )
+            val name = nameField.text.toString().trim()
+            val email = emailField.text.toString().trim()
+            val password = passwordField.text.toString().trim()
+            val confirmPass = confirmField.text.toString().trim()
+            if(name.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPass.isEmpty() )
                 showToast("Please fill all the fields")
-            else if(password != confirmPassword)
+            else if(password != confirmPass)
                 showToast("Password and Confirm Password should match")
             else{
-                register(userName, email, password)
+                register(email, password)
             }
         }
 
         // Click listener for Return to Login Button
         returnLoginButton.setOnClickListener {
-            val intent = Intent(this, LoginPage::class.java)
-            startActivity(intent)
+            finish()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if(requestCode==0 && resultCode==Activity.RESULT_OK && data!=null){
+            selectedPhotoUri = data.data
+
+            selectPhotoText.visibility = View.GONE
+            selectPhotoButton.background = null
+            selectPhotoButton.setImageURI(selectedPhotoUri)
         }
     }
 
     // Sign Up Method
-    private fun register(userName:String, email: String, password: String){
-        auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(this){
+    private fun register(email: String, password: String){
+        FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password).addOnCompleteListener(this){
             if(it.isSuccessful){
-                val user = auth.currentUser
-                val userId : String = user!!.uid
-                val newUser = User(userId, userName)
-                database = FirebaseFirestore.getInstance().collection("Users")
-
-                // Add new user to database
-                database.add(newUser)
-                    .addOnSuccessListener(OnSuccessListener<DocumentReference?> {
-                        // Adding the user is successful. Direct to Main Page
-                        val intent = Intent(this, MainPage::class.java)
-                        startActivity(intent)
-                    })
-                    .addOnFailureListener(OnFailureListener {
-                        // Adding the user is failed. Show error message.
-                        showToast("Sign Up:Failed ")
-                    })
+                uploadImagetoFirebase()
             }
+        }.addOnFailureListener{
+            showToast("Failed to Sign Up: ${it.message} ")
+        }
+    }
+
+    private  fun uploadImagetoFirebase(){
+        if(selectedPhotoUri == null)
+            saveUsertoFirebase("")
+        else {
+            val filename = UUID.randomUUID().toString()
+            val ref = FirebaseStorage.getInstance().getReference("/Profile Photos/${filename}")
+
+            ref.putFile(selectedPhotoUri!!).addOnSuccessListener {
+                ref.downloadUrl.addOnSuccessListener {
+                    saveUsertoFirebase(it.toString())
+                }
+            }.addOnFailureListener {
+                showToast("Failed to save the photo: ${it.message}")
+            }
+        }
+    }
+
+    private fun saveUsertoFirebase(profileImageUri: String){
+        val uid = FirebaseAuth.getInstance().uid
+        val ref = FirebaseDatabase.getInstance().getReference("users/$uid")
+
+        val user = User(uid!!, nameField.text.toString().trim(), profileImageUri)
+        ref.setValue(user).addOnSuccessListener {
+            val intent = Intent(this, MainPage::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        }.addOnFailureListener{
+            showToast("Failed to store the data: ${it.message}")
         }
     }
 
