@@ -56,8 +56,9 @@ class NewFriendsPage : AppCompatActivity() {
                 groupAdapter.setOnItemClickListener { item, view ->
                     val userItem = item as UserItem
 
-                    val intent = Intent(view.context, ChatPage::class.java)
-                    intent.putExtra(USER_KEY, item.user)
+                    val intent = Intent(view.context, NonFriendProfilePage::class.java)
+                    intent.putExtra(USER_KEY, userItem.user)
+                    intent.putExtra("callerActivity", "NewFriendsPage")
                     startActivity(intent)
 
                     finish()
