@@ -1,6 +1,6 @@
 package com.example.chatty
 
-import android.net.Uri
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
@@ -14,6 +14,8 @@ import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
 import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
+
+
 
 class ChatPage : AppCompatActivity() {
     private lateinit var sendMessageIcon: ImageView
@@ -58,14 +60,24 @@ class ChatPage : AppCompatActivity() {
         adapter.add(FriendChatFromItem())
         adapter.add(FriendChatToItem())
         recyclerChatLog.adapter = adapter
+
+        friendChatProfilePhoto.setOnClickListener {
+            val intent = Intent(this, FriendProfilePage::class.java)
+            intent.putExtra(USER_KEY, user)
+            startActivity(intent)
+        }
     }
+
+    companion object{
+        const val USER_KEY = "USER_KEY"
+    }
+
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
-                // onBackPressed() // Go back when the Up button is clicked
-                // return true
-                finish()
+                onBackPressed() // Go back when the Up button is clicked
+                return true
             }
             // Handle other menu items if needed
         }
