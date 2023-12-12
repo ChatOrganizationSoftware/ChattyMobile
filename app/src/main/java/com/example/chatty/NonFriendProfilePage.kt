@@ -1,14 +1,13 @@
 package com.example.chatty
 
 import android.content.Intent
+import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -16,27 +15,28 @@ import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
 import de.hdodenhof.circleimageview.CircleImageView
 
-class ProfilePage: AppCompatActivity() {
-
+class NonFriendProfilePage : AppCompatActivity() {
     private lateinit var nameField: TextView
     private lateinit var aboutField: TextView
     private lateinit var visibility: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.profile_page)
+        setContentView(R.layout.nonfriend_profile_page)
+
+        val user = intent.getParcelableExtra<User>(ChatPage.USER_KEY)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "Profile"
+        supportActionBar?.setDisplayShowHomeEnabled(true)
+        supportActionBar?.setDisplayShowTitleEnabled(false)
 
         nameField = findViewById(R.id.nameField)
         aboutField = findViewById(R.id.aboutField)
         visibility = findViewById(R.id.visibilityText)
 
-        val user = FirebaseAuth.getInstance().currentUser!!.uid
-        val database = FirebaseDatabase.getInstance().getReference("users/$user")
+        val database = FirebaseDatabase.getInstance().getReference("users/${user?.userId}")
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 // Parse the user data from snapshot and update the UI
@@ -46,7 +46,7 @@ class ProfilePage: AppCompatActivity() {
 
                 val image = snapshot.child("profilePhoto").getValue(String::class.java)
                 if(image != "") {
-                    Picasso.get().load(image).into(findViewById<CircleImageView>(R.id.profile_profile_photo))
+                    Picasso.get().load(image).into(findViewById<CircleImageView>(R.id.nonfriend_profile_photo))
                 }
 
             }
@@ -58,18 +58,20 @@ class ProfilePage: AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.profile_menu, menu)
+        menuInflater.inflate(R.menu.friend_profile_menu, menu)
         return super.onCreateOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
-            R.id.profile_edit_profile ->{
-                val intent = Intent(this, UpdateProfile::class.java)
-                startActivity(intent)
-            }
             android.R.id.home -> {
-                finish()
+                val caller = intent.getStringExtra("callerActivity")
+                if (caller == "NewFriendsPage") {
+                    val launchIntent = Intent(this, NewFriendsPage::class.java)
+                    startActivity(launchIntent)
+                    finish()
+                }
+
             }
         }
         return super.onOptionsItemSelected(item)

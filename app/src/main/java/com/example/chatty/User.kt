@@ -1,15 +1,10 @@
 package com.example.chatty
 
-// Properties stored in database for a user
-class User {
-    public var userId: String=""
-    public var userName: String=""
-    public var profileImage: String=""
-    public var chats: ArrayList<String> = ArrayList<String>()
-    public var about: String = ""
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
-    constructor(userId:String, userName: String){
-        this.userId = userId
-        this.userName = userName
-    }
+@Parcelize
+class User(val userId: String, var username: String, var profilePhoto:String = "", val chats: ArrayList<String> = ArrayList(),
+           var about: String = "Hello there", var visibility: String ="Public" ): Parcelable {
+    constructor() : this("", "", "", ArrayList(), "", "")
 }

@@ -5,76 +5,66 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.method.HideReturnsTransformationMethod
 import android.text.method.PasswordTransformationMethod
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.auth
 
 class LoginPage : AppCompatActivity() {
-    private lateinit var auth: FirebaseAuth
-
-    // Components on page
-    private lateinit var emailEditText: EditText
-    private lateinit var passwordEditText: EditText
-    private lateinit var forgotPasswordLink : TextView
+    private lateinit var emailField: EditText
+    private lateinit var passwordField: EditText
+    private lateinit var loginEye: ImageView
+    private lateinit var forgotPassword: TextView
     private lateinit var loginButton: Button
-    private lateinit var signupLink : TextView
-    private lateinit var eye1: ImageView
-
+    private lateinit var signUp: TextView
     // Show/Hide password
     private var showPassword = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        auth = FirebaseAuth.getInstance()
-
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_page)
 
         // Components on page
-        emailEditText = findViewById(R.id.emailField)
-        passwordEditText = findViewById(R.id.passwordField)
-        forgotPasswordLink = findViewById(R.id.forgotPassword)
+        emailField = findViewById(R.id.emailField)
+        passwordField = findViewById(R.id.passwordField)
+        loginEye = findViewById(R.id.loginEye)
+        forgotPassword = findViewById(R.id.forgotPassword)
         loginButton = findViewById(R.id.loginButton)
-        signupLink = findViewById(R.id.signUp)
-        eye1 = findViewById(R.id.eye1)
+        signUp = findViewById(R.id.signUp)
 
         // Click listener for eye icon to show/hide password
-        eye1.setOnClickListener{
+        loginEye.setOnClickListener{
             if(!showPassword){
-                passwordEditText.transformationMethod = HideReturnsTransformationMethod.getInstance()
+                passwordField.transformationMethod = HideReturnsTransformationMethod.getInstance()
                 showPassword = true
             }
             else{
-                passwordEditText.transformationMethod = PasswordTransformationMethod.getInstance()
+                passwordField.transformationMethod = PasswordTransformationMethod.getInstance()
                 showPassword = false
             }
         }
 
         // Click listener for Forgot Password
-        forgotPasswordLink.setOnClickListener {
+        forgotPassword.setOnClickListener {
             val intent = Intent(this, ForgotPasswordPage::class.java)
             startActivity(intent)
         }
 
         // Click listener for Login Button
         loginButton.setOnClickListener {
-            val email = emailEditText.text.toString().trim()
-            val password = passwordEditText.text.toString().trim()
-
+            val email = emailField.text.toString().trim()
+            val password = passwordField.text.toString().trim()
             if (email.isEmpty() || password.isEmpty()) {
                 showToast("Please enter both email and password fields")
             } else {
-                signIn(email, password);
+                signIn(email, password)
             }
         }
 
         // Click listener for Sign Up
-        signupLink.setOnClickListener {
+        signUp.setOnClickListener {
             val intent = Intent(this, SignupPage::class.java)
             startActivity(intent)
         }
@@ -87,16 +77,19 @@ class LoginPage : AppCompatActivity() {
 
     // Sign In function
     private fun signIn(email:String, password: String){
-        this.auth.signInWithEmailAndPassword(email, password)
+        val auth = FirebaseAuth.getInstance()
+        auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    // Login Successful
-                    val intent = Intent(this, MainPage::class.java)
-                    startActivity(intent)
-                } else {
-                    // Login Failed
-                    showToast("Login failed: Please enter valid Email and Password");
-                }
+                // Login Failed
+                if (!task.isSuccessful)
+                    return@addOnCompleteListener
+                // Login Successful
+                val intent = Intent(this, MainPage::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+            }
+            .addOnFailureListener{
+                showToast("Failed to Login: ${it.message}")
             }
     }
 }
