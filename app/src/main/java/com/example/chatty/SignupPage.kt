@@ -17,11 +17,11 @@ import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 
-
 class SignupPage : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var database: CollectionReference
+
 
     // Components on Page
     private lateinit var nameEditText: EditText
@@ -32,6 +32,7 @@ class SignupPage : AppCompatActivity() {
     private lateinit var returnLoginButton: Button
     private lateinit var eye1: ImageView
     private lateinit var eye2: ImageView
+    private lateinit var emailVerification: EmailVerificationPage // Create an instance
 
     private var showPassword = false
     private var showConfirm = false
@@ -41,6 +42,7 @@ class SignupPage : AppCompatActivity() {
         setContentView(R.layout.signup_page)
 
         auth = FirebaseAuth.getInstance()
+        emailVerification = EmailVerificationPage()
 
         // Components on Page
         nameEditText = findViewById(R.id.nameField)
@@ -116,6 +118,8 @@ class SignupPage : AppCompatActivity() {
                         // Adding the user is successful. Direct to Main Page
                         val intent = Intent(this, MainPage::class.java)
                         startActivity(intent)
+
+                        emailVerification.sendEmailForVerification(user)
                     })
                     .addOnFailureListener(OnFailureListener {
                         // Adding the user is failed. Show error message.
