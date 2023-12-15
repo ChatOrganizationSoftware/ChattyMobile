@@ -16,7 +16,7 @@
         android:paddingHorizontal="10dp"
         android:text="TextView"
         android:textSize="30sp"
-        app:layout_constraintBottom_toTopOf="@+id/visibility_newfriend_row"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/image_newfriend_row"
         app:layout_constraintTop_toTopOf="parent"
@@ -38,16 +38,4 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.5" />
 
-    <TextView
-        android:id="@+id/visibility_newfriend_row"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="10dp"
-        android:text="Visibility"
-        android:textSize="20sp"
-        android:textStyle="italic"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/username_newfriend_row"
-        app:layout_constraintTop_toBottomOf="@+id/username_newfriend_row"
-        app:layout_constraintVertical_bias="0.5" />
 </androidx.constraintlayout.widget.ConstraintLayout>

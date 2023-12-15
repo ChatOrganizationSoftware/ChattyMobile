@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
@@ -18,12 +19,14 @@ import com.google.firebase.database.getValue
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
+import de.hdodenhof.circleimageview.CircleImageView
 import java.util.UUID
 
 class MainPage : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private var chats = mutableListOf<String>()
+    private lateinit var createGroupIcon: ImageView
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_page)
@@ -34,6 +37,12 @@ class MainPage : AppCompatActivity() {
         setSupportActionBar(toolbar)
 
         recyclerView = findViewById(R.id.recyclerviewChats)
+
+        createGroupIcon = findViewById(R.id.createGroupIcon)
+        createGroupIcon.setOnClickListener{
+            val intent = Intent(this, CreateGroupPage::class.java)
+            startActivity(intent)
+        }
 
         fetchChats()
     }
@@ -66,7 +75,7 @@ class MainPage : AppCompatActivity() {
                             else{
                                 userRef = FirebaseDatabase.getInstance()
                                     .getReference("/users/${chat?.user1}")
-                                }
+                            }
                                 userRef?.addValueEventListener(object : ValueEventListener {
                                     override fun onDataChange(snapshot: DataSnapshot) {
                                         // Parse the user data from snapshot and update the UI

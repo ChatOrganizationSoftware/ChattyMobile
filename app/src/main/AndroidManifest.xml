@@ -18,6 +18,10 @@
         android:theme="@style/Theme.Chatty"
         tools:targetApi="31">
         <activity
+            android:name=".CreateGroupPage"
+            android:exported="false"
+            android:parentActivityName=".MainPage" />
+        <activity
             android:name=".FriendProfilePage"
             android:exported="false" />
         <activity
@@ -58,8 +62,9 @@
         <activity
             android:name=".SettingsPage"
             android:parentActivityName=".MainPage" />
-        <activity android:name=".UpdateProfile"
-            android:parentActivityName=".ProfilePage"/>
+        <activity
+            android:name=".UpdateProfile"
+            android:parentActivityName=".ProfilePage" />
     </application>
 
 </manifest>

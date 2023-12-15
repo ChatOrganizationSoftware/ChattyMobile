@@ -53,30 +53,27 @@ class NewFriendsPage : AppCompatActivity() {
                 val groupAdapter = GroupAdapter<GroupieViewHolder>()
                 snapshot.children.forEach{
                     val user = it.getValue(User::class.java)
-                    if (user != null && it.key != FirebaseAuth.getInstance().currentUser?.uid && !friends.contains(user.userId)){
-                        groupAdapter.add(UserItem(user))
+                    if (user != null && user.username!="" && it.key != FirebaseAuth.getInstance().currentUser?.uid && !friends.contains(user.userId)){
+                        groupAdapter.add(NewUserItem(user))
                     }
                 }
 
                 groupAdapter.setOnItemClickListener { item, view ->
-                    val userItem = item as UserItem
+                    val userItem = item as NewUserItem
                     val chatId = UUID.randomUUID().toString()
                     val chat = IndividualChat(chatId, FirebaseAuth.getInstance().uid!!, userItem.user.userId)
                     val chatRef = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chatId}")
                     chatRef.setValue(chat).addOnFailureListener{
-                        showToast("Error: Couldn't create the group")
+                        showToast("Error: Couldn't create the chat")
                     }.addOnSuccessListener {
                         val time = Timestamp.now()
-                        val refChatArray = FirebaseDatabase.getInstance().getReference("/users/${chat.user1}/chats/${chat.id}")
-                        refChatArray.setValue(chat.id)
                         FirebaseDatabase.getInstance().getReference("/users/${chat.user1}/chats/${chat.id}/id").setValue(chat.id)
                         FirebaseDatabase.getInstance().getReference("/users/${chat.user1}/chats/${chat.id}/time").setValue(time)
-                        FirebaseDatabase.getInstance().getReference("/users/${chat.user1}/friends").push().setValue(chat.user2)
-                        val refChatArray2 = FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/chats/${chat.id}")
-                        refChatArray2.setValue(chat.id)
+                        FirebaseDatabase.getInstance().getReference("/users/${chat.user1}/friends/${chat.user2}").setValue(chat.user2)
+
                         FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/chats/${chat.id}/id").setValue(chat.id)
                         FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/chats/${chat.id}/time").setValue(time)
-                        FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/friends").push().setValue(chat.user1)
+                        FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/friends/${chat.user2}").setValue(chat.user1)
 
                         val intent = Intent(view.context, FriendChatPage::class.java)
                         intent.putExtra(USER_KEY, chat)
@@ -131,9 +128,10 @@ class NewFriendsPage : AppCompatActivity() {
     }
 }
 
-class UserItem(val user: User): Item<GroupieViewHolder>(){
+class NewUserItem(val user: User): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
         viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = user.username
+        viewHolder.itemView.findViewById<TextView>(R.id.visibility_newfriend_row).text = user.visibility
         if(user.profilePhoto!="")
             Picasso.get().load(user.profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
     }
@@ -151,6 +149,6 @@ class ChatItem(val chat: IndividualChat, val user: User): Item<GroupieViewHolder
     }
 
     override fun getLayout(): Int {
-        return R.layout.new_friends_row
+        return R.layout.chat_row
     }
 }
