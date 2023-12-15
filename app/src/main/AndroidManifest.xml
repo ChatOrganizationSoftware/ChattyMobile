@@ -24,7 +24,7 @@
             android:name=".NonFriendProfilePage"
             android:exported="false" />
         <activity
-            android:name=".ChatPage"
+            android:name=".FriendChatPage"
             android:exported="false"
             android:parentActivityName=".MainPage" />
         <activity

@@ -23,7 +23,7 @@ class FriendProfilePage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_profile_page)
 
-        val user = intent.getParcelableExtra<User>(ChatPage.USER_KEY)
+        val user = intent.getParcelableExtra<User>(FriendChatPage.USER_KEY)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)

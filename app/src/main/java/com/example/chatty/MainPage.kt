@@ -5,19 +5,25 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.getValue
+import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
+import java.util.UUID
 
 class MainPage : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
+    private var chats = mutableListOf<String>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_page)
@@ -32,55 +38,65 @@ class MainPage : AppCompatActivity() {
         fetchChats()
     }
 
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
     private fun fetchChats(){
-        /*val ref = FirebaseDatabase.getInstance().getReference("/users").orderByChild("username")
-        ref.addListenerForSingleValueEvent(object: ValueEventListener {
+        val ref = FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
+        ref.addListenerForSingleValueEvent(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
+                val sortedChats = snapshot.children.sortedByDescending { it.child("time/seconds").getValue(Long::class.java) }
                 val groupAdapter = GroupAdapter<GroupieViewHolder>()
-                snapshot.children.forEach{
-                    val user = it.getValue(User::class.java)
-                    if (user != null && it.key != FirebaseAuth.getInstance().currentUser?.uid){
-                        groupAdapter.add(UserItem(user))
-                    }
+                recyclerView.adapter = groupAdapter
+                sortedChats.forEach{
+                    var friend: User? = null
+                    var chat: IndividualChat? = null
+                    val chatId = it.child("id").getValue(String::class.java)
+                    val chatRef = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chatId}")
+                    var userRef: DatabaseReference? = null
+                    chatRef.addValueEventListener(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            // Parse the user data from snapshot and update the UI
+                            chat = snapshot.getValue(IndividualChat::class.java)
+                            if(FirebaseAuth.getInstance().uid == chat?.user1) {
+                                userRef = FirebaseDatabase.getInstance()
+                                    .getReference("/users/${chat?.user2}")
+                            }
+                            else{
+                                userRef = FirebaseDatabase.getInstance()
+                                    .getReference("/users/${chat?.user1}")
+                                }
+                                userRef?.addValueEventListener(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        // Parse the user data from snapshot and update the UI
+                                        friend = snapshot.getValue(User::class.java)
+                                        if(!chats.contains(chat!!.id)) {
+                                            groupAdapter.add(ChatItem(chat!!, friend!!))
+                                            chats.add(chat!!.id)
+                                        }
+                                    }
+
+                                    override fun onCancelled(error: DatabaseError) {
+                                        // Handle any errors that occur while fetching data
+                                    }
+                                })
+                            }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            // Handle any errors that occur while fetching data
+                        }
+                    })
                 }
 
                 groupAdapter.setOnItemClickListener { item, view ->
-                    val userItem = item as UserItem
+                    val chatItem = item as ChatItem
+                    val chat = chatItem.chat
 
-                    val intent = Intent(view.context, FriendProfilePage::class.java)
-                    intent.putExtra(NewFriendsPage.USER_KEY, item.user)
-                    startActivity(intent)
-
-                    finish()
-                }
-
-                recyclerView.adapter = groupAdapter
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-
-            }
-        })*/
-        val ref = FirebaseDatabase.getInstance().getReference("/users")
-        ref.addListenerForSingleValueEvent(object: ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val groupAdapter = GroupAdapter<GroupieViewHolder>()
-                snapshot.children.forEach{
-                    val user = it.getValue(User::class.java)
-                    if (user != null && it.key == "Fza4118CEAdx0xoPZyXkOg6b4rW2"){
-                        groupAdapter.add(UserItem(user))
-                    }
-                }
-
-                groupAdapter.setOnItemClickListener { item, view ->
-                    val userItem = item as UserItem
-
-                    val intent = Intent(view.context, ChatPage::class.java)
-                    intent.putExtra(NewFriendsPage.USER_KEY, userItem.user)
+                    val intent = Intent(view.context, FriendChatPage::class.java)
+                    intent.putExtra(NewFriendsPage.USER_KEY, chat)
                     startActivity(intent)
                 }
-
-                recyclerView.adapter = groupAdapter
             }
 
             override fun onCancelled(error: DatabaseError) {
