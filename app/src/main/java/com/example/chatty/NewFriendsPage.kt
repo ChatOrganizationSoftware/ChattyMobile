@@ -73,7 +73,7 @@ class NewFriendsPage : AppCompatActivity() {
 
                         FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/chats/${chat.id}/id").setValue(chat.id)
                         FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/chats/${chat.id}/time").setValue(time)
-                        FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/friends/${chat.user2}").setValue(chat.user1)
+                        FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/friends/${chat.user1}").setValue(chat.user1)
 
                         val intent = Intent(view.context, FriendChatPage::class.java)
                         intent.putExtra(USER_KEY, chat)

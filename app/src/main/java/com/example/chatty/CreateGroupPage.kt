@@ -109,7 +109,7 @@ class CreateGroupPage : AppCompatActivity() {
         }
 
         confirmButton.setOnClickListener{
-            saveNewImage()
+            // saveNewImage()
         }
     }
 
