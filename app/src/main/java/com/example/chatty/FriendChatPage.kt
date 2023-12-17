@@ -71,7 +71,7 @@ class FriendChatPage : AppCompatActivity() {
         if(FirebaseAuth.getInstance().uid==chat.user1)
             ref = FirebaseDatabase.getInstance().getReference("/users/${chat.user2}")
         else
-            ref = FirebaseDatabase.getInstance().getReference("/users/${chat.user2}")
+            ref = FirebaseDatabase.getInstance().getReference("/users/${chat.user1}")
 
             ref.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
