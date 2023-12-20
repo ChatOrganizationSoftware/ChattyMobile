@@ -152,3 +152,15 @@ class ChatItem(val chat: IndividualChat, val user: User): Item<GroupieViewHolder
         return R.layout.chat_row
     }
 }
+
+class GroupItem(val group: Group): Item<GroupieViewHolder>(){
+    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = group.name
+        if(group.groupPhoto!="")
+            Picasso.get().load(group.groupPhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
+    }
+
+    override fun getLayout(): Int {
+        return R.layout.chat_row
+    }
+}

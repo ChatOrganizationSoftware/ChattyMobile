@@ -2,11 +2,13 @@ package com.example.chatty
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
@@ -15,6 +17,7 @@ import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -40,20 +43,15 @@ class CreateGroupPage : AppCompatActivity() {
     private lateinit var nameEditText: EditText
     private lateinit var aboutEditText: EditText
 
-    private lateinit var radioGroup: RadioGroup
-    private lateinit var privateCheck: RadioButton
-    private lateinit var publicCheck: RadioButton
-
     private lateinit var confirmButton: Button
     private lateinit var cancelButton: Button
 
     private lateinit var usersList: RecyclerView
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
 
-    private var visibility = "Public"
     private var newImage: Uri? = null
 
-    private var members = mutableListOf<User>()
+    private var members = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,10 +65,6 @@ class CreateGroupPage : AppCompatActivity() {
         nameEditText = findViewById(R.id.nameEditText)
         aboutEditText = findViewById(R.id.aboutEditText)
 
-        radioGroup = findViewById(R.id.radioGroup)
-        publicCheck = findViewById(R.id.publicCheck)
-        privateCheck = findViewById(R.id.privateCheck)
-
         confirmButton = findViewById(R.id.confirmButton)
         cancelButton = findViewById(R.id.cancelButton)
 
@@ -82,24 +76,10 @@ class CreateGroupPage : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
 
-        radioGroup.check(R.id.publicCheck)
-
         editProfilePhoto.setOnClickListener{
             val intent = Intent(Intent.ACTION_PICK)
             intent.type = "image/*"
             startActivityForResult(intent, 0)
-        }
-
-        radioGroup.setOnCheckedChangeListener { _, _ ->
-            run {
-                if (publicCheck.isChecked) {
-                    visibility = "Public"
-                    privateCheck.isChecked = false
-                } else {
-                    visibility = "Private"
-                    privateCheck.isChecked = true
-                }
-            }
         }
 
         fetchFriends()
@@ -109,7 +89,16 @@ class CreateGroupPage : AppCompatActivity() {
         }
 
         confirmButton.setOnClickListener{
-            // saveNewImage()
+            if(members.size==0){
+                showToast("Error: You must select at least 1 member for a group")
+            }
+            else if(nameEditText.text.toString()==""){
+                showToast("Error: You should provide a group name")
+            }
+            else{
+                saveNewImage()
+            }
+
         }
     }
 
@@ -137,13 +126,17 @@ class CreateGroupPage : AppCompatActivity() {
 
                 groupAdapter.setOnItemClickListener { item, view ->
                     val userItem = item as GroupUserItem
-                    if(!userItem.selected) {
-                        members.add(userItem.user)
+                    if(!userItem.selected){
                         userItem.selected = true
+                        members.add(userItem.user.userId)
+                        view.findViewById<ConstraintLayout>(R.id.chat_row_background).setBackgroundColor(Color.parseColor("#504F4F"))
+                        view.findViewById<TextView>(R.id.username_newfriend_row).setTextColor(Color.WHITE)
                     }
                     else{
-                        members.remove(userItem.user)
                         userItem.selected = false
+                        members.remove(userItem.user.userId)
+                        view.findViewById<ConstraintLayout>(R.id.chat_row_background).setBackgroundColor(Color.parseColor("#e6e3e3"))
+                        view.findViewById<TextView>(R.id.username_newfriend_row).setTextColor(Color.BLACK)
                     }
                 }
             }
@@ -183,16 +176,23 @@ class CreateGroupPage : AppCompatActivity() {
     }
 
     private fun createGroup(profileImageUri: String){
-        val chatId = UUID.randomUUID().toString()
-        val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${chatId}")
-
-        var group = Group(chatId, nameEditText.text.toString(), "", aboutEditText.text.toString(), visibility, members)
+        val groupId = UUID.randomUUID().toString()
+        val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}")
+        FirebaseAuth.getInstance().uid?.let { members.add(it) }
+        var group = Group(groupId, auth.uid.toString(), nameEditText.text.toString(), profileImageUri, aboutEditText.text.toString(), members)
 
         if(profileImageUri!="") {
             group.groupPhoto = profileImageUri
         }
 
         ref.setValue(group).addOnSuccessListener {
+            val time = Timestamp.now()
+            for(member in members){
+                FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${groupId}/id").setValue(groupId)
+                FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${groupId}/time").setValue(time)
+                FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${groupId}/group").setValue(true)
+            }
+
             finish()
         }.addOnFailureListener{
             showToast("Failed to store the data: ${it.message}")
@@ -226,7 +226,8 @@ class GroupUserItem(val user: User): Item<GroupieViewHolder>(){
             Picasso.get().load(user.profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
     }
 
+
     override fun getLayout(): Int {
-        return R.layout.chat_row
+        return R.layout.chat_row // Use the normal layout
     }
 }

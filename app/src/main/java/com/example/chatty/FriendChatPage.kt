@@ -41,7 +41,7 @@ class FriendChatPage : AppCompatActivity() {
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private val messages = mutableListOf<String>()
 
-    @SuppressLint("SuspiciousIndentation")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_chat_page)
