@@ -14,7 +14,7 @@
         android:background="@drawable/roundstyle_message"
         android:maxWidth="240dp"
         android:padding="10dp"
-        android:text="Message1asddddddddddddddddddasddsadsa"
+        android:text=""
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
