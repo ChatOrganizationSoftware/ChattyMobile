@@ -7,7 +7,7 @@
     android:layout_height="wrap_content"
     android:layout_marginTop="2dp"
     android:background="#e6e3e3"
-    android:paddingHorizontal="20dp">
+    android:paddingHorizontal="10dp">
 
     <TextView
         android:id="@+id/username_newfriend_row"
@@ -28,7 +28,6 @@
         android:id="@+id/image_newfriend_row"
         android:layout_width="60dp"
         android:layout_height="60dp"
-        android:layout_marginStart="10dp"
         android:layout_marginTop="10dp"
         android:layout_marginBottom="10dp"
         android:src="@drawable/ekran_g_r_nt_s____2023_12_05_20_12_14"

@@ -61,6 +61,7 @@ class GroupChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
+        // Gets the group information from the firebase
         FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 // Parse the user data from snapshot and update the UI
@@ -114,6 +115,7 @@ class GroupChatPage : AppCompatActivity() {
     }
 
 
+    // Gets the all messages in the group rom the firebase
     private fun listenMessages(){
         databaseRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
@@ -182,6 +184,7 @@ class GroupChatPage : AppCompatActivity() {
     }
 }
 
+// Class to display the messages coming from other users
 class GroupChatFromItem(val text: String, val username:String, val photoURI:String): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
         viewHolder.itemView.findViewById<TextView>(R.id.textViewFromRow).text = text

@@ -95,21 +95,23 @@
                 android:id="@+id/leaveGroupButton"
                 android:layout_width="150dp"
                 android:layout_height="50dp"
-                android:layout_marginTop="50dp"
                 android:layout_marginBottom="20dp"
                 android:backgroundTint="#781911"
                 android:text="Leave Grouo"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.5"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/membersRecyclerview" />
+                app:layout_constraintHorizontal_bias="0.498"
+                app:layout_constraintStart_toStartOf="parent" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/membersRecyclerview"
-                android:layout_width="241dp"
+                android:layout_width="0dp"
                 android:layout_height="234dp"
+                android:layout_marginStart="5dp"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="50dp"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                app:layout_constraintBottom_toTopOf="@+id/leaveGroupButton"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/textView11"
                 app:layout_constraintTop_toTopOf="@+id/textView11" />

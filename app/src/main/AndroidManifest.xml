@@ -41,11 +41,6 @@
         <activity
             android:name=".MainPage"
             android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
         <activity
             android:name=".NewFriendsPage"
@@ -53,7 +48,13 @@
             android:parentActivityName=".MainPage" />
         <activity
             android:name=".LoginPage"
-            android:exported="true" />
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity android:name=".SignupPage" />
         <activity android:name=".EmailVerificationPage" />
         <activity android:name=".ForgotPasswordPage" />

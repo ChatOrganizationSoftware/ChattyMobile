@@ -42,6 +42,7 @@ class FriendChatPage : AppCompatActivity() {
     private val messages = mutableListOf<String>()
 
 
+    @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_chat_page)
@@ -97,12 +98,14 @@ class FriendChatPage : AppCompatActivity() {
 
         listenMessages()
 
+        // Go to user's profile page
         friendChatProfilePhoto.setOnClickListener {
             val intent = Intent(this, FriendProfilePage::class.java)
             intent.putExtra(USER_KEY, friend)
             startActivity(intent)
         }
 
+        // Send message icon
         sendIcon.setOnClickListener{
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
@@ -124,6 +127,7 @@ class FriendChatPage : AppCompatActivity() {
     }
 
 
+    // Gets the all previous messages in the chat from the firebase
     private fun listenMessages(){
         databaseRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
@@ -176,6 +180,7 @@ class FriendChatPage : AppCompatActivity() {
     }
 }
 
+// Class to display messages get from the other user
 class FriendChatFromItem(val text: String): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
         viewHolder.itemView.findViewById<TextView>(R.id.textViewFromRow).text = text
@@ -185,6 +190,8 @@ class FriendChatFromItem(val text: String): Item<GroupieViewHolder>(){
         return R.layout.friend_chat_from_row
     }
 }
+
+// Class to display messages the current user has sent
 class FriendChatToItem(val text: String): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
         viewHolder.itemView.findViewById<TextView>(R.id.textViewToRow).text = text
