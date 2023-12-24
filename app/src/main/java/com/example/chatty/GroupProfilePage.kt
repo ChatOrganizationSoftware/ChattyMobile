@@ -16,6 +16,7 @@ import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
+import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
 
 class GroupProfilePage : AppCompatActivity() {
@@ -46,6 +47,7 @@ class GroupProfilePage : AppCompatActivity() {
         membersRecyclerView = findViewById(R.id.membersRecyclerview)
         membersRecyclerView.adapter = groupAdapter
 
+        // Gests the group information from the firebase
         val database = FirebaseDatabase.getInstance().getReference("/GroupChats/${group.groupId}")
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -84,7 +86,7 @@ class GroupProfilePage : AppCompatActivity() {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         // Parse the user data from snapshot and update the UI
                         val user = snapshot.getValue(User::class.java)!!
-                        groupAdapter.add(NewUserItem(user))
+                        groupAdapter.add(GroupMemberItem(user))
                     }
 
                     override fun onCancelled(error: DatabaseError) {
@@ -109,5 +111,19 @@ class GroupProfilePage : AppCompatActivity() {
             }
         }
         return super.onOptionsItemSelected(item)
+    }
+}
+
+// Class to display the group members
+class GroupMemberItem(val user: User): Item<GroupieViewHolder>(){
+    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = user.username
+        viewHolder.itemView.findViewById<TextView>(R.id.visibility_newfriend_row).text = user.visibility
+        if(user.profilePhoto!="")
+            Picasso.get().load(user.profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
+    }
+
+    override fun getLayout(): Int {
+        return R.layout.group_member_row
     }
 }

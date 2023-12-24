@@ -36,6 +36,7 @@ class NonFriendProfilePage : AppCompatActivity() {
         aboutField = findViewById(R.id.aboutField)
         visibility = findViewById(R.id.visibilityText)
 
+        // Get the user information from the firebase
         val database = FirebaseDatabase.getInstance().getReference("users/${user?.userId}")
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {

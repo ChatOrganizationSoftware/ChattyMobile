@@ -26,6 +26,8 @@ class LoginPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_page)
 
+        verifyUserIsLoggedIn()
+
         // Components on page
         emailField = findViewById(R.id.emailField)
         passwordField = findViewById(R.id.passwordField)
@@ -67,6 +69,15 @@ class LoginPage : AppCompatActivity() {
         signUp.setOnClickListener {
             val intent = Intent(this, SignupPage::class.java)
             startActivity(intent)
+        }
+    }
+
+    // If the user has already logged in, navigate to main page
+    private fun verifyUserIsLoggedIn(){
+        if(FirebaseAuth.getInstance().currentUser != null){
+            val intent = Intent(this, MainPage::class.java)
+            startActivity(intent)
+            finish()
         }
     }
 

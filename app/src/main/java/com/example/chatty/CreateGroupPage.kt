@@ -57,6 +57,7 @@ class CreateGroupPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.create_group_page)
 
+        // Toolbar above the screen
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -71,37 +72,41 @@ class CreateGroupPage : AppCompatActivity() {
         editProfilePhoto = findViewById(R.id.groupProfilePhoto)
 
         usersList = findViewById(R.id.recyclerviewUsers)
-
         usersList.adapter = groupAdapter
 
         auth = FirebaseAuth.getInstance()
 
+        // Click listener to select photo for the group
         editProfilePhoto.setOnClickListener{
             val intent = Intent(Intent.ACTION_PICK)
             intent.type = "image/*"
             startActivityForResult(intent, 0)
         }
 
+        // Fetch friends to select who to add the group
         fetchFriends()
 
+        // Cancel the group creation
         cancelButton.setOnClickListener{
             finish()
         }
 
+        // Create the group
         confirmButton.setOnClickListener{
-            if(members.size==0){
+            if(members.size==0){            // There should be at least 1 user selected
                 showToast("Error: You must select at least 1 member for a group")
             }
-            else if(nameEditText.text.toString()==""){
+            else if(nameEditText.text.toString()==""){  // Name of the group can't be empty
                 showToast("Error: You should provide a group name")
             }
             else{
-                saveNewImage()
+                saveNewImage()          // Start creating the group with saving the group image
             }
 
         }
     }
 
+    // Fetch friends to select the ones added to group
     private fun fetchFriends(){
         val ref = FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/friends")
         ref.addValueEventListener(object: ValueEventListener {
@@ -147,6 +152,7 @@ class CreateGroupPage : AppCompatActivity() {
         })
     }
 
+    // About selecting the image from device gallery
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -158,8 +164,9 @@ class CreateGroupPage : AppCompatActivity() {
         }
     }
 
+    // Stores the group image in the Firebase Storage
     private fun saveNewImage(){
-        if(newImage == null)
+        if(newImage == null)            // If the user didn't select any image
             createGroup("")
         else {
             val filename = UUID.randomUUID().toString()
@@ -175,16 +182,18 @@ class CreateGroupPage : AppCompatActivity() {
         }
     }
 
+    // Creates the group with the given image URI
     private fun createGroup(profileImageUri: String){
         val groupId = UUID.randomUUID().toString()
         val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}")
         FirebaseAuth.getInstance().uid?.let { members.add(it) }
         var group = Group(groupId, auth.uid.toString(), nameEditText.text.toString(), profileImageUri, aboutEditText.text.toString(), members)
 
-        if(profileImageUri!="") {
+        if(profileImageUri!="") {       // If the user selected an image
             group.groupPhoto = profileImageUri
         }
 
+        // Add the group to all the members' chat list
         ref.setValue(group).addOnSuccessListener {
             val time = Timestamp.now()
             for(member in members){
@@ -199,11 +208,13 @@ class CreateGroupPage : AppCompatActivity() {
         }
     }
 
+    // Inserting menu onto toolbar
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.friend_profile_menu, menu)
         return super.onCreateOptionsMenu(menu)
     }
 
+    // Handling menu options
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
@@ -218,6 +229,7 @@ class CreateGroupPage : AppCompatActivity() {
     }
 }
 
+// Class to display the users for adding users to group
 class GroupUserItem(val user: User): Item<GroupieViewHolder>(){
     var selected = false
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
