@@ -38,15 +38,16 @@
             android:id="@+id/searchBar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
             android:layout_marginTop="10dp"
             android:background="@drawable/roundstyle_login"
             android:ems="10"
-            android:hint="Username"
+            android:hint="Search user"
             android:inputType="text"
             android:paddingVertical="5dp"
             android:paddingStart="10dp"
             android:textSize="20sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>

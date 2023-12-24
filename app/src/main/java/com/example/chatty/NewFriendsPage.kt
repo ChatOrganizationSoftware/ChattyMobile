@@ -78,7 +78,7 @@ class NewFriendsPage : AppCompatActivity() {
                 snapshot.children.forEach{
                     val user = it.getValue(User::class.java)
                     if (user != null && user.username!="" && it.key != FirebaseAuth.getInstance().currentUser?.uid && !friends.contains(user.userId)){
-                        if(user.username.contains(typedText, ignoreCase = true))
+                        if(user.username.startsWith(typedText, ignoreCase = true))
                             groupAdapter.add(NewUserItem(user))
                     }
                 }
