@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -35,7 +36,7 @@ class GroupChatPage : AppCompatActivity() {
     private lateinit var sendImageIcon: ImageView
     private lateinit var chatName: TextView
     private lateinit var group: Group
-    private lateinit var memberTable: HashMap<String, User>
+    private var memberTable= HashMap<String, User>()
     private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private val messages = mutableListOf<String>()
@@ -67,6 +68,8 @@ class GroupChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
+        databaseRef = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}/Messages")
+
         // Gets the group information from the firebase
         FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -77,17 +80,15 @@ class GroupChatPage : AppCompatActivity() {
                 if(image != "") {
                     Picasso.get().load(image).into(friendChatProfilePhoto)
                 }
+
+                fetchMembers()
+                listenMessages()
             }
 
             override fun onCancelled(error: DatabaseError) {
                 // Handle any errors that occur while fetching data
             }
         })
-
-        databaseRef = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}/Messages")
-
-        memberTable = HashMap<String, User>()
-        listenMessages()
 
         friendChatProfilePhoto.setOnClickListener {
             val intent = Intent(this, GroupProfilePage::class.java)
@@ -138,79 +139,66 @@ class GroupChatPage : AppCompatActivity() {
     }
 
 
+    private  fun fetchMembers(){
+        for(member in group.members){
+            FirebaseDatabase.getInstance().getReference("/users/${member}")
+                .addValueEventListener(object : ValueEventListener {
+                    override fun onDataChange(dataSnapshot: DataSnapshot) {
+                        val user = dataSnapshot.getValue(User::class.java) as User
+                        memberTable.put(user.userId, user)
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        TODO("Not yet implemented")
+                    }
+                })
+        }
+    }
+
     // Gets the all messages in the group rom the firebase
     private fun listenMessages(){
-        databaseRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val messagesList = mutableListOf<IndividualMessage>()
+        databaseRef.addChildEventListener(object: ChildEventListener{
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val message = IndividualMessage()
+                message.message = snapshot.child("message").getValue(String::class.java)
+                message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
+                message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
+                message.id = snapshot.key.toString()
 
-                var size = 0
-                for (snapshot in dataSnapshot.children) {
-                    val message = IndividualMessage()
-                    message.message = snapshot.child("message").getValue(String::class.java)
-                    message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
-                    message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
-                    message.id = snapshot.key.toString()
-                    messagesList.add(message)
-                    size += 1
+                if(message.photoURI == null) {
+                    if (FirebaseAuth.getInstance().uid == message.senderId) {
+                        groupAdapter.add(FriendChatToItem(message.message!!))
+                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                    }
+                    else {
+                        val sender = memberTable[message.senderId]
+                        groupAdapter.add(GroupChatFromItem(message.message!!, sender!!.username, sender.profilePhoto))
+                    }
                 }
-
-                var count = 0
-                for(member in group.members){
-                    FirebaseDatabase.getInstance().getReference("/users/${member}")
-                        .addValueEventListener(object : ValueEventListener {
-                            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                                val user = dataSnapshot.getValue(User::class.java) as User
-                                memberTable.put(user.userId, user)
-                                count += 1
-                                if(count==group.members.size){
-                                    for(i in 0..<size){
-                                        if(!messages.contains(messagesList[i].id)) {
-                                            if(messagesList[i].photoURI == null) {
-                                                if (FirebaseAuth.getInstance().uid == messagesList[i].senderId)
-                                                    groupAdapter.add(FriendChatToItem(messagesList[i].message!!))
-                                                else {
-                                                    val sender =
-                                                        memberTable[messagesList[i].senderId]
-                                                    groupAdapter.add(
-                                                        GroupChatFromItem(
-                                                            messagesList[i].message!!,
-                                                            sender!!.username,
-                                                            sender.profilePhoto
-                                                        )
-                                                    )
-                                                }
-                                                recyclerChatLog.post {
-                                                    recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                                                }
-                                            }
-                                            else{
-                                                if (FirebaseAuth.getInstance().uid == messagesList[i].senderId)
-                                                    groupAdapter.add(FriendChatToPhoto(messagesList[i].photoURI!!))
-                                                else
-                                                    groupAdapter.add(FriendChatFromPhoto(messagesList[i].photoURI!!))
-                                                recyclerChatLog.post {
-                                                    recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                                                }
-                                            }
-                                            messages.add(messagesList[i].id)
-                                        }
-
-                                    }
-                                }
-                            }
-
-                            override fun onCancelled(databaseError: DatabaseError) {
-                                // Handle errors if any
-                                println("Error: ${databaseError.message}")
-                            }
-                        })
+                else{
+                    if (FirebaseAuth.getInstance().uid == message.senderId) {
+                        groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
+                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                    }
+                    else
+                        groupAdapter.add(FriendChatFromPhoto(message.photoURI!!))
                 }
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
-                // Handle errors if any
-                println("Error: ${databaseError.message}")
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                TODO("Not yet implemented")
             }
         })
     }

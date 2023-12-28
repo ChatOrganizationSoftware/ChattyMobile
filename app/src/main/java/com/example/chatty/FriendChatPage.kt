@@ -42,7 +42,6 @@ class FriendChatPage : AppCompatActivity() {
     private var friend: User? = null
     private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
-    private val messages = mutableListOf<String>()
     private lateinit var sendImageIcon: ImageView
     private var selectedPhoto: Uri? = null
 
@@ -100,7 +99,6 @@ class FriendChatPage : AppCompatActivity() {
             })
 
         databaseRef = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chat.id}/Messages")
-
         listenMessages()
 
         // Go to user's profile page
@@ -140,50 +138,49 @@ class FriendChatPage : AppCompatActivity() {
 
     // Gets the all previous messages in the chat from the firebase
     private fun listenMessages(){
-        databaseRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val messagesList = mutableListOf<IndividualMessage>()
+        databaseRef.addChildEventListener(object: ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val message = IndividualMessage()
+                message.message = snapshot.child("message").getValue(String::class.java)
+                message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
+                message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
+                message.id = snapshot.key.toString()
 
-                var size = 0
-                for (snapshot in dataSnapshot.children) {
-                    val message = IndividualMessage()
-                    message.message = snapshot.child("message").getValue(String::class.java)
-                    message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
-                    message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
-                    message.id = snapshot.key.toString()
-                    messagesList.add(message)
-                    size += 1
-                }
-
-                for(i in 0..<size){
-                    if(!messages.contains(messagesList[i].id)) {
-                        if(messagesList[i].photoURI == null) {
-                            if (FirebaseAuth.getInstance().uid == messagesList[i].senderId)
-                                groupAdapter.add(FriendChatToItem(messagesList[i].message!!))
-                            else
-                                groupAdapter.add(FriendChatFromItem(messagesList[i].message!!))
-                            recyclerChatLog.post {
-                                recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                            }
-                        }
-                        else{
-                            if (FirebaseAuth.getInstance().uid == messagesList[i].senderId)
-                                groupAdapter.add(FriendChatToPhoto(messagesList[i].photoURI!!))
-                            else
-                                groupAdapter.add(FriendChatFromPhoto(messagesList[i].photoURI!!))
-                            recyclerChatLog.post {
-                                recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                            }
-                        }
-                        messages.add(messagesList[i].id)
+                if(message.photoURI == null) {
+                    if (FirebaseAuth.getInstance().uid == message.senderId) {
+                        groupAdapter.add(FriendChatToItem(message.message!!))
+                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     }
+                    else
+                        groupAdapter.add(FriendChatFromItem(message.message!!))
                 }
+                else{
+                    if (FirebaseAuth.getInstance().uid == message.senderId) {
+                        groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
+                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                    }
+                    else
+                        groupAdapter.add(FriendChatFromPhoto(message.photoURI!!))
+                }
+
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
-                // Handle errors if any
-                println("Error: ${databaseError.message}")
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
             }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                TODO("Not yet implemented")
+            }
+
         })
     }
 
