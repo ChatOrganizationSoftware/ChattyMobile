@@ -1,6 +1,8 @@
 package com.example.chatty
 
+import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
@@ -30,11 +32,14 @@ class GroupChatPage : AppCompatActivity() {
     private lateinit var recyclerChatLog: RecyclerView
     private lateinit var friendChatProfilePhoto: CircleImageView
     private lateinit var sendIcon: ImageView
+    private lateinit var sendImageIcon: ImageView
     private lateinit var chatName: TextView
     private lateinit var group: Group
     private lateinit var memberTable: HashMap<String, User>
     private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
+    private val messages = mutableListOf<String>()
+    private var selectedPhoto: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +53,7 @@ class GroupChatPage : AppCompatActivity() {
         val actionBar = supportActionBar
         actionBar?.setDisplayShowTitleEnabled(false)
 
+        sendImageIcon = findViewById(R.id.sendImageIcon)
         sendIcon = findViewById(R.id.messageSendIcon)
         enteredMessage = findViewById(R.id.enteredMessage)
         friendChatProfilePhoto = findViewById(R.id.friendChatProfilePhoto)
@@ -98,7 +104,7 @@ class GroupChatPage : AppCompatActivity() {
                 val ref = databaseRef.push()
 
                 val time = Timestamp.now()
-                val message = IndividualMessage( ref.key!!, text, FirebaseAuth.getInstance().uid!!, time)
+                val message = IndividualMessage( ref.key!!, text, null, FirebaseAuth.getInstance().uid!!, time)
                 ref.setValue(message).addOnSuccessListener {
                     for(member in group.members){
                         FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
@@ -107,9 +113,26 @@ class GroupChatPage : AppCompatActivity() {
                 }
             }
         }
+
+        sendImageIcon.setOnClickListener {
+            val intent = Intent(Intent.ACTION_PICK)
+            intent.type = "image/*"
+            startActivityForResult(intent, 0)
+        }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
 
+        if(requestCode==0 && resultCode== Activity.RESULT_OK && data!=null){
+            selectedPhoto = data.data
+
+            val intent = Intent(this, DisplayImageGroupPage::class.java)
+            intent.putExtra("PHOTO_SELECTED", selectedPhoto.toString())
+            intent.putExtra("GROUP", group)
+            startActivity(intent)
+        }
+    }
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
@@ -119,13 +142,16 @@ class GroupChatPage : AppCompatActivity() {
     private fun listenMessages(){
         databaseRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val messagesList = mutableListOf<String>()
-                val sendersList = mutableListOf<String>()
+                val messagesList = mutableListOf<IndividualMessage>()
 
                 var size = 0
                 for (snapshot in dataSnapshot.children) {
-                    snapshot.child("message").getValue<String>()?.let { messagesList.add(it) }
-                    snapshot.child("senderId").getValue<String>()?.let { sendersList.add(it) }
+                    val message = IndividualMessage()
+                    message.message = snapshot.child("message").getValue(String::class.java)
+                    message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
+                    message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
+                    message.id = snapshot.key.toString()
+                    messagesList.add(message)
                     size += 1
                 }
 
@@ -139,14 +165,35 @@ class GroupChatPage : AppCompatActivity() {
                                 count += 1
                                 if(count==group.members.size){
                                     for(i in 0..<size){
-                                        if (FirebaseAuth.getInstance().uid == sendersList[(i)])
-                                            groupAdapter.add(FriendChatToItem(messagesList[i]))
-                                        else {
-                                            val sender = memberTable[sendersList[i]]
-                                            groupAdapter.add( GroupChatFromItem( messagesList[i], sender!!.username, sender.profilePhoto ))
-                                        }
-                                        recyclerChatLog.post {
-                                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                                        if(!messages.contains(messagesList[i].id)) {
+                                            if(messagesList[i].photoURI == null) {
+                                                if (FirebaseAuth.getInstance().uid == messagesList[i].senderId)
+                                                    groupAdapter.add(FriendChatToItem(messagesList[i].message!!))
+                                                else {
+                                                    val sender =
+                                                        memberTable[messagesList[i].senderId]
+                                                    groupAdapter.add(
+                                                        GroupChatFromItem(
+                                                            messagesList[i].message!!,
+                                                            sender!!.username,
+                                                            sender.profilePhoto
+                                                        )
+                                                    )
+                                                }
+                                                recyclerChatLog.post {
+                                                    recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                                                }
+                                            }
+                                            else{
+                                                if (FirebaseAuth.getInstance().uid == messagesList[i].senderId)
+                                                    groupAdapter.add(FriendChatToPhoto(messagesList[i].photoURI!!))
+                                                else
+                                                    groupAdapter.add(FriendChatFromPhoto(messagesList[i].photoURI!!))
+                                                recyclerChatLog.post {
+                                                    recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                                                }
+                                            }
+                                            messages.add(messagesList[i].id)
                                         }
 
                                     }

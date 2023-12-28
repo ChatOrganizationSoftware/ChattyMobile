@@ -1,10 +1,13 @@
 package com.example.chatty
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -40,7 +43,8 @@ class FriendChatPage : AppCompatActivity() {
     private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private val messages = mutableListOf<String>()
-
+    private lateinit var sendImageIcon: ImageView
+    private var selectedPhoto: Uri? = null
 
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,6 +59,7 @@ class FriendChatPage : AppCompatActivity() {
         val actionBar = supportActionBar
         actionBar?.setDisplayShowTitleEnabled(false)
 
+        sendImageIcon = findViewById(R.id.sendImageIcon)
         sendIcon = findViewById(R.id.messageSendIcon)
         enteredMessage = findViewById(R.id.enteredMessage)
         friendChatProfilePhoto = findViewById(R.id.friendChatProfilePhoto)
@@ -110,7 +115,7 @@ class FriendChatPage : AppCompatActivity() {
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
                 val ref = databaseRef.push()
-                val message = IndividualMessage( ref.key!!, text, FirebaseAuth.getInstance().uid!!,Timestamp.now())
+                val message = IndividualMessage( ref.key!!, text, null, FirebaseAuth.getInstance().uid!!,Timestamp.now())
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now()
                     FirebaseDatabase.getInstance().getReference("/users/${chat.user1}/chats/${chat.id}/time").setValue(time)
@@ -118,6 +123,12 @@ class FriendChatPage : AppCompatActivity() {
                     enteredMessage.setText("")
                 }
             }
+        }
+
+        sendImageIcon.setOnClickListener{
+            val intent = Intent(Intent.ACTION_PICK)
+            intent.type = "image/*"
+            startActivityForResult(intent, 0)
         }
     }
 
@@ -131,28 +142,40 @@ class FriendChatPage : AppCompatActivity() {
     private fun listenMessages(){
         databaseRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val messagesList = mutableListOf<String>()
-                val sendersList = mutableListOf<String>()
-                val idList = mutableListOf<String>()
+                val messagesList = mutableListOf<IndividualMessage>()
 
                 var size = 0
                 for (snapshot in dataSnapshot.children) {
-                    snapshot.child("message").getValue<String>()?.let { messagesList.add(it) }
-                    snapshot.child("senderId").getValue<String>()?.let { sendersList.add(it) }
+                    val message = IndividualMessage()
+                    message.message = snapshot.child("message").getValue(String::class.java)
+                    message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
+                    message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
+                    message.id = snapshot.key.toString()
+                    messagesList.add(message)
                     size += 1
-                    snapshot.child("id").getValue<String>()?.let { idList.add(it) }
                 }
 
                 for(i in 0..<size){
-                    if(!messages.contains(idList[i])) {
-                        if (FirebaseAuth.getInstance().uid == sendersList[(i)])
-                            groupAdapter.add(FriendChatToItem(messagesList[i]))
-                        else
-                            groupAdapter.add(FriendChatFromItem(messagesList[i]))
-                        messages.add(idList[i])
-                        recyclerChatLog.post {
-                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                    if(!messages.contains(messagesList[i].id)) {
+                        if(messagesList[i].photoURI == null) {
+                            if (FirebaseAuth.getInstance().uid == messagesList[i].senderId)
+                                groupAdapter.add(FriendChatToItem(messagesList[i].message!!))
+                            else
+                                groupAdapter.add(FriendChatFromItem(messagesList[i].message!!))
+                            recyclerChatLog.post {
+                                recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                            }
                         }
+                        else{
+                            if (FirebaseAuth.getInstance().uid == messagesList[i].senderId)
+                                groupAdapter.add(FriendChatToPhoto(messagesList[i].photoURI!!))
+                            else
+                                groupAdapter.add(FriendChatFromPhoto(messagesList[i].photoURI!!))
+                            recyclerChatLog.post {
+                                recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                            }
+                        }
+                        messages.add(messagesList[i].id)
                     }
                 }
             }
@@ -162,6 +185,20 @@ class FriendChatPage : AppCompatActivity() {
                 println("Error: ${databaseError.message}")
             }
         })
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if(requestCode==0 && resultCode== Activity.RESULT_OK && data!=null){
+            selectedPhoto = data.data
+
+            val intent = Intent(this, DisplayImagePage::class.java)
+            intent.putExtra("PHOTO_SELECTED", selectedPhoto.toString())
+            intent.putExtra("CHAT_ID", chat.id)
+            intent.putExtra("FRIEND_ID", friend?.userId)
+            startActivity(intent)
+        }
     }
 
     companion object{
@@ -201,3 +238,25 @@ class FriendChatToItem(val text: String): Item<GroupieViewHolder>(){
         return R.layout.friend_chat_to_row
     }
 }
+
+class FriendChatToPhoto(val photoURI: String): Item<GroupieViewHolder>(){
+    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<ImageView>(R.id.sentPhoto))
+    }
+
+    override fun getLayout(): Int {
+        return R.layout.friend_chat_to_photo
+    }
+}
+
+class FriendChatFromPhoto(val photoURI: String): Item<GroupieViewHolder>(){
+    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<ImageView>(R.id.sentPhoto))
+    }
+
+    override fun getLayout(): Int {
+        return R.layout.friend_chat_from_photo
+    }
+}
+
+
