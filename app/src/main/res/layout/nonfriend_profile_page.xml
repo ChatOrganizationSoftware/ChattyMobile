@@ -102,29 +102,16 @@
                 app:layout_constraintTop_toTopOf="@+id/textView12" />
 
             <Button
-                android:id="@+id/sendFriendshipRequestButton"
+                android:id="@+id/unblockButton"
                 android:layout_width="120dp"
                 android:layout_height="50dp"
                 android:layout_marginTop="60dp"
-                android:layout_marginBottom="20dp"
-                android:backgroundTint="@android:color/holo_green_dark"
-                android:text="Add Friend"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/blockButton"
+                android:backgroundTint="#ab1f13"
+                android:text="Unblock"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.5"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView12" />
-
-            <Button
-                android:id="@+id/blockButton"
-                android:layout_width="120dp"
-                android:layout_height="50dp"
-                android:backgroundTint="#ab1f13"
-                android:text="Block"
-                app:layout_constraintBottom_toBottomOf="@+id/sendFriendshipRequestButton"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.5"
-                app:layout_constraintStart_toEndOf="@+id/sendFriendshipRequestButton" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>

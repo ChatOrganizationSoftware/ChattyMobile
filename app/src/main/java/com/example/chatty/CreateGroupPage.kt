@@ -112,7 +112,7 @@ class CreateGroupPage : AppCompatActivity() {
         ref.addValueEventListener(object: ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot){
                 snapshot.children.forEach{
-                    val userId = it.getValue(String::class.java)
+                    val userId = it.key
 
                     FirebaseDatabase.getInstance().getReference("/users/${userId}").addValueEventListener(object: ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {

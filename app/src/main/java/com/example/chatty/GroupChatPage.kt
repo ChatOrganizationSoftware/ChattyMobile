@@ -36,6 +36,7 @@ class GroupChatPage : AppCompatActivity() {
     private lateinit var sendImageIcon: ImageView
     private lateinit var chatName: TextView
     private lateinit var group: Group
+    private var groupId: String? = null
     private var memberTable= HashMap<String, User>()
     private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
@@ -46,7 +47,7 @@ class GroupChatPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.group_chat_page)
 
-        val groupId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
+        groupId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -80,15 +81,14 @@ class GroupChatPage : AppCompatActivity() {
                 if(image != "") {
                     Picasso.get().load(image).into(friendChatProfilePhoto)
                 }
-
-                fetchMembers()
-                listenMessages()
             }
 
             override fun onCancelled(error: DatabaseError) {
                 // Handle any errors that occur while fetching data
             }
         })
+
+        fetchMembers()
 
         friendChatProfilePhoto.setOnClickListener {
             val intent = Intent(this, GroupProfilePage::class.java)
@@ -140,24 +140,60 @@ class GroupChatPage : AppCompatActivity() {
 
 
     private  fun fetchMembers(){
-        for(member in group.members){
-            FirebaseDatabase.getInstance().getReference("/users/${member}")
-                .addValueEventListener(object : ValueEventListener {
-                    override fun onDataChange(dataSnapshot: DataSnapshot) {
-                        val user = dataSnapshot.getValue(User::class.java) as User
-                        memberTable.put(user.userId, user)
-                    }
+        FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}/members")
+            .addChildEventListener(object: ChildEventListener{
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    FirebaseDatabase.getInstance().getReference("/users/${snapshot.getValue(String::class.java)}")
+                        .addValueEventListener(object : ValueEventListener {
+                            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                                val user = dataSnapshot.getValue(User::class.java) as User
+                                memberTable.put(user.userId, user)
 
-                    override fun onCancelled(error: DatabaseError) {
-                        TODO("Not yet implemented")
-                    }
-                })
-        }
+                                groupAdapter.clear()
+                                listenMessages()
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                TODO("Not yet implemented")
+                            }
+                        })
+                }
+
+                override fun onChildRemoved(snapshot: DataSnapshot) {
+                    FirebaseDatabase.getInstance().getReference("/users/${snapshot.getValue(String::class.java)}")
+                        .addValueEventListener(object : ValueEventListener {
+                            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                                val user = dataSnapshot.getValue(User::class.java) as User
+                                memberTable.remove(user.userId)
+
+                                groupAdapter.clear()
+                                listenMessages()
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                TODO("Not yet implemented")
+                            }
+                        })
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                    TODO("Not yet implemented")
+                }
+
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                    TODO("Not yet implemented")
+                }
+            })
     }
 
     // Gets the all messages in the group rom the firebase
     private fun listenMessages(){
-        databaseRef.addChildEventListener(object: ChildEventListener{
+        FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}/Messages")
+            .addChildEventListener(object: ChildEventListener{
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val message = IndividualMessage()
                 message.message = snapshot.child("message").getValue(String::class.java)

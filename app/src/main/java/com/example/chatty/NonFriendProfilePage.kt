@@ -5,9 +5,11 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -19,6 +21,7 @@ class NonFriendProfilePage : AppCompatActivity() {
     private lateinit var nameField: TextView
     private lateinit var aboutField: TextView
     private lateinit var visibility: TextView
+    private lateinit var unblockButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +38,7 @@ class NonFriendProfilePage : AppCompatActivity() {
         nameField = findViewById(R.id.nameField)
         aboutField = findViewById(R.id.aboutField)
         visibility = findViewById(R.id.visibilityText)
+        unblockButton = findViewById(R.id.unblockButton)
 
         // Get the user information from the firebase
         val database = FirebaseDatabase.getInstance().getReference("users/${user?.userId}")
@@ -56,6 +60,14 @@ class NonFriendProfilePage : AppCompatActivity() {
                 // Handle any errors that occur while fetching data
             }
         })
+
+        unblockButton.setOnClickListener {
+            if (user != null) {
+                FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/block/${user.userId}").removeValue()
+                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/blockedBy/${FirebaseAuth.getInstance().uid}").removeValue()
+                finish()
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

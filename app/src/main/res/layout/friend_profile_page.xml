@@ -103,13 +103,13 @@
                 app:layout_constraintTop_toTopOf="@+id/textView12" />
 
             <Button
-                android:id="@+id/sendFriendshipRequestButton"
+                android:id="@+id/deleteChat"
                 android:layout_width="150dp"
                 android:layout_height="50dp"
                 android:layout_marginTop="30dp"
                 android:layout_marginBottom="20dp"
                 android:backgroundTint="#781911"
-                android:text="Remove Friend"
+                android:text="Delete Chat"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@+id/blockButton"
                 app:layout_constraintHorizontal_bias="0.5"
@@ -123,10 +123,10 @@
                 android:layout_height="50dp"
                 android:backgroundTint="#ab1f13"
                 android:text="Block"
-                app:layout_constraintBottom_toBottomOf="@+id/sendFriendshipRequestButton"
+                app:layout_constraintBottom_toBottomOf="@+id/deleteChat"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.5"
-                app:layout_constraintStart_toEndOf="@+id/sendFriendshipRequestButton" />
+                app:layout_constraintStart_toEndOf="@+id/deleteChat" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
