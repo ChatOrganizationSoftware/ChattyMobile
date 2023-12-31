@@ -18,6 +18,7 @@ class DisplayImagePage : AppCompatActivity() {
     private lateinit var photo: ImageView
     private lateinit var declineSend: ImageView
     private lateinit var confirmSend: ImageView
+    private var isGroup = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +66,7 @@ class DisplayImagePage : AppCompatActivity() {
     }
 
     private fun saveMessagetoFirebase(imageUri: String){
+
         val ref = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chatId}/Messages").push()
         val time = Timestamp.now()
         val message = IndividualMessage( ref.key!!, null, imageUri, FirebaseAuth.getInstance().uid!!,

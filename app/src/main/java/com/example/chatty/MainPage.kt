@@ -30,7 +30,8 @@ class MainPage : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var createGroupIcon: ImageView
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
-
+    private lateinit var inputChats: MutableList<String>
+    private var databaseRef = FirebaseDatabase.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         showToast("MAIN")
@@ -42,6 +43,8 @@ class MainPage : AppCompatActivity() {
 
         recyclerView = findViewById(R.id.recyclerviewChats)
         recyclerView.adapter = groupAdapter
+
+        displayChats()
 
         createGroupIcon = findViewById(R.id.createGroupIcon)
         createGroupIcon.setOnClickListener{
@@ -57,7 +60,7 @@ class MainPage : AppCompatActivity() {
                 val chat = chatItem.chat
 
                 val intent = Intent(view.context, FriendChatPage::class.java)
-                intent.putExtra(NewFriendsPage.USER_KEY, chat)
+                intent.putExtra(NewFriendsPage.USER_KEY, chat.id)
                 startActivity(intent)
             } else {
                 val groupItem = item as GroupItem
@@ -69,7 +72,6 @@ class MainPage : AppCompatActivity() {
             }
         }
 
-        displayChats()
     }
 
     private fun showToast(message: String) {
@@ -77,7 +79,7 @@ class MainPage : AppCompatActivity() {
     }
 
     private fun displayChats(){
-        val ref = FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
+        val ref = databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
         ref.addListenerForSingleValueEvent(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 groupAdapter.clear()
@@ -94,20 +96,17 @@ class MainPage : AppCompatActivity() {
                         if(!isGroup[i]){
                             var friend: User? = null
                             var chat: IndividualChat? = null
-                            val chatRef = FirebaseDatabase.getInstance()
-                                .getReference("/IndividualChats/${inputChats[i]}")
+                            val chatRef = databaseRef.getReference("/IndividualChats/${inputChats[i]}")
                             var userRef: DatabaseReference? = null
                             chatRef.addValueEventListener(object : ValueEventListener {
                                 override fun onDataChange(snapshot: DataSnapshot) {
                                     // Parse the user data from snapshot and update the UI
                                     chat = snapshot.getValue(IndividualChat::class.java)
                                     if(FirebaseAuth.getInstance().uid == chat?.user1) {
-                                        userRef = FirebaseDatabase.getInstance()
-                                            .getReference("/users/${chat?.user2}")
+                                        userRef = databaseRef.getReference("/users/${chat?.user2}")
                                     }
                                     else{
-                                        userRef = FirebaseDatabase.getInstance()
-                                            .getReference("/users/${chat?.user1}")
+                                        userRef = databaseRef.getReference("/users/${chat?.user1}")
                                     }
                                     userRef?.addValueEventListener(object : ValueEventListener {
                                         override fun onDataChange(snapshot: DataSnapshot) {
@@ -129,7 +128,7 @@ class MainPage : AppCompatActivity() {
                         }
                         else{
                             var group = Group()
-                            FirebaseDatabase.getInstance().getReference("/GroupChats/${inputChats[i]}")
+                            databaseRef.getReference("/GroupChats/${inputChats[i]}")
                                 .addValueEventListener(object : ValueEventListener {
                                     override fun onDataChange(snapshot: DataSnapshot) {
                                         // Parse the user data from snapshot and update the UI

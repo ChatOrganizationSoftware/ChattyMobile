@@ -21,8 +21,8 @@ import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
 
 class GroupProfilePage : AppCompatActivity() {
-    private lateinit var group: Group
-    private lateinit var members: HashMap<String, User>
+    private var group = Group()
+    private lateinit var members: MutableList<String>
     private lateinit var membersRecyclerView: RecyclerView
     private lateinit var nameField: TextView
     private lateinit var aboutField: TextView
@@ -33,9 +33,7 @@ class GroupProfilePage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.group_profile_page)
 
-        group = intent.getParcelableExtra<Group>("Group")!!
-        val bundle = intent.getBundleExtra("Members")!!
-        members = bundle.getSerializable("memberTable") as HashMap<String, User>
+        val groupId = intent.getStringExtra("GROUP_ID")!!
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)
@@ -49,7 +47,7 @@ class GroupProfilePage : AppCompatActivity() {
         membersRecyclerView.adapter = groupAdapter
 
         // Gets the group information from the firebase
-        val database = FirebaseDatabase.getInstance().getReference("/GroupChats/${group.groupId}")
+        val database = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}")
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 group.name = snapshot.child("name").getValue(String::class.java).toString()
@@ -88,13 +86,17 @@ class GroupProfilePage : AppCompatActivity() {
     }
 
     private fun fetchMembers(){
+        members = mutableListOf()
         for(member in group.members){
             FirebaseDatabase.getInstance().getReference("/users/${member}")
                 .addValueEventListener(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         // Parse the user data from snapshot and update the UI
                         val user = snapshot.getValue(User::class.java)!!
-                        groupAdapter.add(GroupMemberItem(user))
+                        if(!members.contains(user.userId)) {
+                            groupAdapter.add(GroupMemberItem(user))
+                            members.add(user.userId)
+                        }
                     }
 
                     override fun onCancelled(error: DatabaseError) {

@@ -40,10 +40,11 @@ class GroupChatPage : AppCompatActivity() {
     private var group = Group()
     private var groupId: String? = null
     private var memberTable= HashMap<String, User>()
-    private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private val groupAdmins = mutableListOf<String>()
     private var selectedPhoto: Uri? = null
+    private var databaseRef = FirebaseDatabase.getInstance()
+    private var uid = FirebaseAuth.getInstance().uid
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,10 +79,8 @@ class GroupChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
-        databaseRef = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}/Messages")
-
         // Gets the group information from the firebase
-        FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}").addValueEventListener(object : ValueEventListener {
+        databaseRef.getReference("/GroupChats/${groupId}").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 // Parse the user data from snapshot and update the UI
                 group.name = snapshot.child("name").getValue(String::class.java).toString()
@@ -109,37 +108,35 @@ class GroupChatPage : AppCompatActivity() {
 
 
         friendChatProfilePhoto.setOnClickListener {
-            if (group.admins.contains(FirebaseAuth.getInstance().uid)) {
+            if (group.admins.contains(uid)) {
                 enteredMessage.clearFocus() // Clear focus from EditText
                 val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
                 val intent = Intent(this, GroupAdminProfilePage::class.java)
-                intent.putExtra("Group", group)
-                val bundle = Bundle()
-                bundle.putSerializable("memberTable", memberTable)
-                intent.putExtra("Members", bundle)
+                intent.putExtra("GROUP_ID", group.groupId)
                 startActivity(intent)
                 finish()
             }
             else {
+                enteredMessage.clearFocus() // Clear focus from EditText
+                val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
                 val intent = Intent(this, GroupProfilePage::class.java)
-                intent.putExtra("Group", group)
-                val bundle = Bundle()
-                bundle.putSerializable("memberTable", memberTable)
-                intent.putExtra("Members", bundle)
+                intent.putExtra("GROUP_ID", group.groupId)
                 startActivity(intent)
+                finish()
             }
         }
         sendIcon.setOnClickListener{
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
-                val ref = databaseRef.push()
+                val ref = databaseRef.getReference("/GroupChats/${groupId}/Messages").push()
 
                 val time = Timestamp.now()
-                val message = IndividualMessage( ref.key!!, text, null, FirebaseAuth.getInstance().uid!!, time)
+                val message = IndividualMessage( ref.key!!, text, null, uid!!, time)
                 ref.setValue(message).addOnSuccessListener {
                     for(member in group.members){
-                        FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
+                        databaseRef.getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
                     }
                     enteredMessage.setText("")
                 }
@@ -172,7 +169,7 @@ class GroupChatPage : AppCompatActivity() {
 
     private  fun fetchMembers(){
         for(mem in group.members){
-            FirebaseDatabase.getInstance().getReference("/users/${mem}")
+            databaseRef.getReference("/users/${mem}")
                         .addValueEventListener(object : ValueEventListener {
                             override fun onDataChange(dataSnapshot: DataSnapshot) {
                                 val user = dataSnapshot.getValue(User::class.java) as User
@@ -190,7 +187,7 @@ class GroupChatPage : AppCompatActivity() {
 
     // Gets the all messages in the group rom the firebase
     private fun listenMessages(){
-        FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}/Messages")
+        databaseRef.getReference("/GroupChats/${groupId}/Messages")
             .addChildEventListener(object: ChildEventListener{
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val message = IndividualMessage()
@@ -200,7 +197,7 @@ class GroupChatPage : AppCompatActivity() {
                 message.id = snapshot.key.toString()
 
                 if(message.photoURI == null) {
-                    if (FirebaseAuth.getInstance().uid == message.senderId) {
+                    if (uid == message.senderId) {
                         groupAdapter.add(FriendChatToItem(message.message!!))
                         recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     }
@@ -210,7 +207,7 @@ class GroupChatPage : AppCompatActivity() {
                     }
                 }
                 else{
-                    if (FirebaseAuth.getInstance().uid == message.senderId) {
+                    if (uid == message.senderId) {
                         groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
                         recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     }

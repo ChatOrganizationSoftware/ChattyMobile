@@ -34,12 +34,17 @@ class FriendProfilePage : AppCompatActivity() {
     private lateinit var blockButton: Button
     private lateinit var removeChatButton: Button
     private var currentUser: String? = null
-    var chatId: String? = null
+    private var chatId: String? = null
+    private var user: User? = null
+    private var databaseRef = FirebaseDatabase.getInstance()
+    private var uid = FirebaseAuth.getInstance().uid
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_profile_page)
 
-        val user = intent.getParcelableExtra<User>(FriendChatPage.USER_KEY)
+        val userId = intent.getStringExtra(FriendChatPage.USER_KEY)
+        chatId = intent.getStringExtra("CHAT_ID")
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)
@@ -52,7 +57,7 @@ class FriendProfilePage : AppCompatActivity() {
         blockButton = findViewById(R.id.blockButton)
         removeChatButton = findViewById(R.id.deleteChat)
 
-        FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/username")
+        databaseRef.getReference("/users/${uid}/username")
             .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
                     currentUser = snapshot.getValue(String::class.java)
@@ -63,39 +68,22 @@ class FriendProfilePage : AppCompatActivity() {
                 }
             })
 
-        // Get the information about the user from the firebase
-        val database = FirebaseDatabase.getInstance().getReference("users/${user?.userId}")
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                // Parse the user data from snapshot and update the UI
-                nameField.text = snapshot.child("username").getValue(String::class.java)
-                aboutField.text = snapshot.child("about").getValue(String::class.java)
-                visibility.text = snapshot.child("visibility").getValue(String::class.java)
-
-                val image = snapshot.child("profilePhoto").getValue(String::class.java)
-                if(image != "") {
-                    Picasso.get().load(image).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
+        databaseRef.getReference("/users/${userId}")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    user = snapshot.getValue(User::class.java)
+                    nameField.text = user!!.username
+                    aboutField.text = user!!.about
+                    visibility.text = user!!.visibility
+                    if(user!!.profilePhoto != "") {
+                        Picasso.get().load(user!!.profilePhoto).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
+                    }
                 }
 
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                // Handle any errors that occur while fetching data
-            }
-        })
-
-        if (user != null) {
-            FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/friends/${user.userId}")
-                .addValueEventListener(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        chatId = snapshot.getValue(String::class.java)
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {
-                        TODO("Not yet implemented")
-                    }
-                })
-        }
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
 
         removeChatButton.setOnClickListener {
             if (user != null) {
@@ -106,20 +94,17 @@ class FriendProfilePage : AppCompatActivity() {
                     }
                 }
 
-                FirebaseDatabase.getInstance()
-                    .getReference("/users/${FirebaseAuth.getInstance().uid}/friends/${user.userId}")
+                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}")
                     .removeValue()
-                FirebaseDatabase.getInstance()
-                    .getReference("/users/${user.userId}/friends/${FirebaseAuth.getInstance().uid}")
+                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}")
                     .removeValue()
-                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/chats/${chatId}")
+                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}")
                     .removeValue()
-                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/notifications")
+                databaseRef.getReference("/users/${user!!.userId}/notifications")
                     .push().setValue("$currentUser has removed your chat.")
-                FirebaseDatabase.getInstance().getReference("/IndividualChats/${chatId}")
+                databaseRef.getReference("/IndividualChats/${chatId}")
                     .removeValue()
-                FirebaseDatabase.getInstance()
-                    .getReference("/users/${FirebaseAuth.getInstance().uid}/chats/${chatId}")
+                databaseRef.getReference("/users/${uid}/chats/${chatId}")
                     .removeValue().addOnSuccessListener {
                         showToast("ACTIVITY")
                         val intent = Intent(this, MainPage::class.java)
@@ -132,8 +117,8 @@ class FriendProfilePage : AppCompatActivity() {
 
         blockButton.setOnClickListener {
             if (user != null) {
-                FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/block/${user.userId}").setValue(user.userId)
-                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/blockedBy/${FirebaseAuth.getInstance().uid}").setValue(FirebaseAuth.getInstance().uid)
+                databaseRef.getReference("/users/${uid}/block/${user!!.userId}").setValue(user!!.userId)
+                databaseRef.getReference("/users/${user!!.userId}/blockedBy/${uid}").setValue(uid)
 
                 val folderRef = FirebaseStorage.getInstance().getReference("/$chatId")
                 folderRef.listAll().addOnSuccessListener { list ->
@@ -142,20 +127,17 @@ class FriendProfilePage : AppCompatActivity() {
                     }
                 }
 
-                FirebaseDatabase.getInstance()
-                    .getReference("/users/${FirebaseAuth.getInstance().uid}/friends/${user.userId}")
+                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}")
                     .removeValue()
-                FirebaseDatabase.getInstance()
-                    .getReference("/users/${user.userId}/friends/${FirebaseAuth.getInstance().uid}")
+                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}")
                     .removeValue()
-                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/chats/${chatId}")
+                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}")
                     .removeValue()
-                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/notifications")
+                databaseRef.getReference("/users/${user!!.userId}/notifications")
                     .push().setValue("$currentUser has blocked you.")
-                FirebaseDatabase.getInstance().getReference("/IndividualChats/${chatId}")
+                databaseRef.getReference("/IndividualChats/${chatId}")
                     .removeValue()
-                FirebaseDatabase.getInstance()
-                    .getReference("/users/${FirebaseAuth.getInstance().uid}/chats/${chatId}")
+                databaseRef.getReference("/users/${uid}/chats/${chatId}")
                     .removeValue().addOnSuccessListener {
                         val intent = Intent(this, MainPage::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
@@ -175,12 +157,12 @@ class FriendProfilePage : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
-                FirebaseDatabase.getInstance().getReference("/IndividualChats/$chatId")
+                databaseRef.getReference("/IndividualChats/$chatId")
                     .addValueEventListener(object: ValueEventListener{
                         override fun onDataChange(snapshot: DataSnapshot) {
                             val chat = snapshot.getValue(IndividualChat::class.java)
                             val intent = Intent(this@FriendProfilePage, FriendChatPage::class.java)
-                            intent.putExtra(NewFriendsPage.USER_KEY, chat)
+                            intent.putExtra(NewFriendsPage.USER_KEY, chat!!.id)
                             startActivity(intent)
                             finish()
                         }

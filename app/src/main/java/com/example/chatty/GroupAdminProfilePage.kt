@@ -23,22 +23,22 @@ import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
 
 class GroupAdminProfilePage : AppCompatActivity() {
-    private lateinit var group: Group
-    private lateinit var members: HashMap<String, User>
+    private var group = Group()
+    private lateinit var members: MutableList<String>
     private lateinit var membersRecyclerView: RecyclerView
     private lateinit var nameField: TextView
     private lateinit var aboutField: TextView
     private lateinit var leaveGroupButton: Button
     private lateinit var closeGroupButton: Button
     private val groupAdapter = GroupAdapter<GroupieViewHolder>()
+    private var databaseRef = FirebaseDatabase.getInstance()
+    private var uid = FirebaseAuth.getInstance().uid
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.group_admin_profile_page)
 
-        group = intent.getParcelableExtra<Group>("Group")!!
-        val bundle = intent.getBundleExtra("Members")!!
-        members = bundle.getSerializable("memberTable") as HashMap<String, User>
+        val groupId = intent.getStringExtra("GROUP_ID")!!
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)
@@ -54,7 +54,7 @@ class GroupAdminProfilePage : AppCompatActivity() {
 
 
         // Gets the group information from the firebase
-        val database = FirebaseDatabase.getInstance().getReference("/GroupChats/${group.groupId}")
+        val database = databaseRef.getReference("/GroupChats/${groupId}")
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 group.name = snapshot.child("name").getValue(String::class.java).toString()
@@ -88,19 +88,16 @@ class GroupAdminProfilePage : AppCompatActivity() {
         }
 
         closeGroupButton.setOnClickListener {
-            FirebaseDatabase.getInstance()
-                .getReference("/users/${FirebaseAuth.getInstance().uid}/username")
+            databaseRef.getReference("/users/${uid}/username")
                 .addValueEventListener(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         val adminName = snapshot.getValue(String::class.java)
                         for (member in group.members) {
-                            if(member != FirebaseAuth.getInstance().uid) {
-                                FirebaseDatabase.getInstance()
-                                    .getReference("/users/${member}/chats/${group.groupId}")
+                            if(member != uid) {
+                                databaseRef.getReference("/users/${member}/chats/${group.groupId}")
                                     .removeValue()
 
-                                val not = FirebaseDatabase.getInstance()
-                                    .getReference("/users/${member}/notifications").push()
+                                val not = databaseRef.getReference("/users/${member}/notifications").push()
                                 not.setValue("$adminName has closed the group {${group.name}}.")
                             }
                         }
@@ -111,9 +108,9 @@ class GroupAdminProfilePage : AppCompatActivity() {
                     }
                 })
 
-            FirebaseDatabase.getInstance().getReference("/GroupChats/${group.groupId}").removeValue()
+            databaseRef.getReference("/GroupChats/${group.groupId}").removeValue()
             FirebaseStorage.getInstance().getReference("/Profile Photos/${group.groupId}").delete()
-            FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/chats/${group.groupId}").removeValue().addOnSuccessListener {
+            databaseRef.getReference("/users/${uid}/chats/${group.groupId}").removeValue().addOnSuccessListener {
                 val intent = Intent(this, MainPage::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)
@@ -127,13 +124,17 @@ class GroupAdminProfilePage : AppCompatActivity() {
     }
 
     private fun fetchMembers(){
+        members = mutableListOf()
         for(member in group.members){
-            FirebaseDatabase.getInstance().getReference("/users/${member}")
+            databaseRef.getReference("/users/${member}")
                 .addValueEventListener(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         // Parse the user data from snapshot and update the UI
                         val user = snapshot.getValue(User::class.java)!!
-                        groupAdapter.add(GroupMemberItem(user))
+                        if(!members.contains(user.userId)) {
+                            groupAdapter.add(GroupMemberItem(user))
+                            members.add(user.userId)
+                        }
                     }
 
                     override fun onCancelled(error: DatabaseError) {

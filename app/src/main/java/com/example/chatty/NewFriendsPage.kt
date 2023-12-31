@@ -32,6 +32,7 @@ class NewFriendsPage : AppCompatActivity() {
     private var blockedBy = mutableListOf<String>()
     private var block = mutableListOf<String>()
     private lateinit var searchBar: EditText
+    private var databaseRef = FirebaseDatabase.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,7 +76,7 @@ class NewFriendsPage : AppCompatActivity() {
 
     // Fetch the users which are matching with the given text
     private fun fetchUsers(typedText: String){
-        val ref = FirebaseDatabase.getInstance().getReference("/users").orderByChild("username")
+        val ref = databaseRef.getReference("/users").orderByChild("username")
         ref.addListenerForSingleValueEvent(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 val groupAdapter = GroupAdapter<GroupieViewHolder>()
@@ -102,30 +103,23 @@ class NewFriendsPage : AppCompatActivity() {
                             FirebaseAuth.getInstance().uid!!,
                             userItem.user.userId
                         )
-                        val chatRef = FirebaseDatabase.getInstance()
-                            .getReference("/IndividualChats/${chatId}")
+                        val chatRef = databaseRef.getReference("/IndividualChats/${chatId}")
                         chatRef.setValue(chat).addOnFailureListener {
                             showToast("Error: Couldn't create the chat")
                         }.addOnSuccessListener {
                             val time = Timestamp.now()
-                            FirebaseDatabase.getInstance()
-                                .getReference("/users/${chat.user1}/chats/${chat.id}/id")
+                            databaseRef.getReference("/users/${chat.user1}/chats/${chat.id}/id")
                                 .setValue(chat.id)
-                            FirebaseDatabase.getInstance()
-                                .getReference("/users/${chat.user1}/chats/${chat.id}/time")
+                            databaseRef.getReference("/users/${chat.user1}/chats/${chat.id}/time")
                                 .setValue(time)
-                            FirebaseDatabase.getInstance()
-                                .getReference("/users/${chat.user1}/friends/${chat.user2}")
+                            databaseRef.getReference("/users/${chat.user1}/friends/${chat.user2}")
                                 .setValue(chat.id)
 
-                            FirebaseDatabase.getInstance()
-                                .getReference("/users/${chat.user2}/chats/${chat.id}/id")
+                            databaseRef.getReference("/users/${chat.user2}/chats/${chat.id}/id")
                                 .setValue(chat.id)
-                            FirebaseDatabase.getInstance()
-                                .getReference("/users/${chat.user2}/chats/${chat.id}/time")
+                            databaseRef.getReference("/users/${chat.user2}/chats/${chat.id}/time")
                                 .setValue(time)
-                            FirebaseDatabase.getInstance()
-                                .getReference("/users/${chat.user2}/friends/${chat.user1}")
+                            databaseRef.getReference("/users/${chat.user2}/friends/${chat.user1}")
                                 .setValue(chat.id)
 
                             val intent = Intent(view.context, FriendChatPage::class.java)
@@ -159,7 +153,7 @@ class NewFriendsPage : AppCompatActivity() {
 
     // Returns the users we are already messaging so we don't display them again.
     private fun returnFriends() {
-        val ref = FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/friends")
+        val ref = databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/friends")
         ref.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 friends = mutableListOf()
@@ -177,7 +171,7 @@ class NewFriendsPage : AppCompatActivity() {
             }
         })
 
-        FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/blockedBy")
+        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/blockedBy")
             .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     blockedBy = mutableListOf()
@@ -193,7 +187,7 @@ class NewFriendsPage : AppCompatActivity() {
                 }
             })
 
-        FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/block")
+        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/block")
             .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     block = mutableListOf()

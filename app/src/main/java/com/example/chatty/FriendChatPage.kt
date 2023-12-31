@@ -42,10 +42,11 @@ class FriendChatPage : AppCompatActivity() {
     private lateinit var chatName: TextView
     private var chat: IndividualChat? = null
     private var friend: User? = null
-    private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private lateinit var sendImageIcon: ImageView
     private var selectedPhoto: Uri? = null
+    private var databaseRef = FirebaseDatabase.getInstance()
+    private var uid = FirebaseAuth.getInstance().uid
 
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,8 +54,8 @@ class FriendChatPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_chat_page)
 
-        chat = intent.getParcelableExtra<IndividualChat>(NewFriendsPage.USER_KEY)!!
-        if(chat==null){
+        val chatId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
+        if(chatId=="" || chatId==null){
             val intent = Intent(this, MainPage::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             startActivity(intent)
@@ -81,34 +82,46 @@ class FriendChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
-        var ref: DatabaseReference? = null
-        if(FirebaseAuth.getInstance().uid==chat!!.user1)
-            ref = FirebaseDatabase.getInstance().getReference("/users/${chat!!.user2}")
-        else
-            ref = FirebaseDatabase.getInstance().getReference("/users/${chat!!.user1}")
-
-            ref.addValueEventListener(object : ValueEventListener {
+        databaseRef.getReference("IndividualChats/$chatId")
+            .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    // Parse the user data from snapshot and update the UI
-                    friend = snapshot.getValue(User::class.java)
-                    if(friend==null)
-                        showToast("Error: Couldn't get the user data")
-                    else{
-                        chatName.text = friend!!.username
-                        val image = friend!!.profilePhoto
-                        if(image != "") {
-                            Picasso.get().load(image).into(friendChatProfilePhoto)
-                        }
+                    chat = snapshot.getValue(IndividualChat::class.java)
+                    if(chat==null){
+                        finish()
                     }
+
+                    var ref: DatabaseReference? = null
+                    if(uid==chat!!.user1)
+                        ref = databaseRef.getReference("/users/${chat!!.user2}")
+                    else
+                        ref = databaseRef.getReference("/users/${chat!!.user1}")
+
+                    ref.addValueEventListener(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            // Parse the user data from snapshot and update the UI
+                            friend = snapshot.getValue(User::class.java)
+                            if(friend==null)
+                                showToast("Error: Couldn't get the user data")
+                            else{
+                                chatName.text = friend!!.username
+                                val image = friend!!.profilePhoto
+                                if(image != "") {
+                                    Picasso.get().load(image).into(friendChatProfilePhoto)
+                                }
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            // Handle any errors that occur while fetching data
+                        }
+                    })
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    // Handle any errors that occur while fetching data
+                    TODO("Not yet implemented")
                 }
             })
-
-        databaseRef = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chat!!.id}/Messages")
-        listenMessages()
+        listenMessages(chatId)
 
         // Go to user's profile page
         friendChatProfilePhoto.setOnClickListener {
@@ -116,7 +129,8 @@ class FriendChatPage : AppCompatActivity() {
             val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
             val intent = Intent(this, FriendProfilePage::class.java)
-            intent.putExtra(USER_KEY, friend)
+            intent.putExtra(USER_KEY, friend!!.userId)
+            intent.putExtra("CHAT_ID", chatId)
             startActivity(intent)
             finish()
         }
@@ -125,12 +139,12 @@ class FriendChatPage : AppCompatActivity() {
         sendIcon.setOnClickListener{
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
-                val ref = databaseRef.push()
-                val message = IndividualMessage( ref.key!!, text, null, FirebaseAuth.getInstance().uid!!,Timestamp.now())
+                val ref = databaseRef.getReference("/IndividualChats/${chatId}/Messages").push()
+                val message = IndividualMessage( ref.key!!, text, null, uid!!,Timestamp.now())
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now()
-                    FirebaseDatabase.getInstance().getReference("/users/${chat!!.user1}/chats/${chat!!.id}/time").setValue(time)
-                    FirebaseDatabase.getInstance().getReference("/users/${chat!!.user2}/chats/${chat!!.id}/time").setValue(time)
+                    databaseRef.getReference("/users/${chat!!.user1}/chats/${chat!!.id}/time").setValue(time)
+                    databaseRef.getReference("/users/${chat!!.user2}/chats/${chat!!.id}/time").setValue(time)
                     enteredMessage.setText("")
                 }
             }
@@ -150,8 +164,8 @@ class FriendChatPage : AppCompatActivity() {
 
 
     // Gets the all previous messages in the chat from the firebase
-    private fun listenMessages(){
-        databaseRef.addChildEventListener(object: ChildEventListener {
+    private fun listenMessages(chatId: String){
+        databaseRef.getReference("/IndividualChats/${chatId}/Messages").addChildEventListener(object: ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val message = IndividualMessage()
                 message.message = snapshot.child("message").getValue(String::class.java)
@@ -160,7 +174,7 @@ class FriendChatPage : AppCompatActivity() {
                 message.id = snapshot.key.toString()
 
                 if(message.photoURI == null) {
-                    if (FirebaseAuth.getInstance().uid == message.senderId) {
+                    if (uid == message.senderId) {
                         groupAdapter.add(FriendChatToItem(message.message!!))
                         recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     }
@@ -168,7 +182,7 @@ class FriendChatPage : AppCompatActivity() {
                         groupAdapter.add(FriendChatFromItem(message.message!!))
                 }
                 else{
-                    if (FirebaseAuth.getInstance().uid == message.senderId) {
+                    if (uid == message.senderId) {
                         groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
                         recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     }
