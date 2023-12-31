@@ -10,28 +10,31 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.storage.FirebaseStorage
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
 import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
 
-class GroupProfilePage : AppCompatActivity() {
+class GroupAdminProfilePage : AppCompatActivity() {
     private lateinit var group: Group
     private lateinit var members: HashMap<String, User>
     private lateinit var membersRecyclerView: RecyclerView
     private lateinit var nameField: TextView
     private lateinit var aboutField: TextView
     private lateinit var leaveGroupButton: Button
+    private lateinit var closeGroupButton: Button
     private val groupAdapter = GroupAdapter<GroupieViewHolder>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.group_profile_page)
+        setContentView(R.layout.group_admin_profile_page)
 
         group = intent.getParcelableExtra<Group>("Group")!!
         val bundle = intent.getBundleExtra("Members")!!
@@ -45,8 +48,10 @@ class GroupProfilePage : AppCompatActivity() {
         nameField = findViewById(R.id.nameField)
         aboutField = findViewById(R.id.aboutField)
         leaveGroupButton = findViewById(R.id.leaveGroupButton)
+        closeGroupButton = findViewById(R.id.closeGroupButton)
         membersRecyclerView = findViewById(R.id.membersRecyclerview)
         membersRecyclerView.adapter = groupAdapter
+
 
         // Gets the group information from the firebase
         val database = FirebaseDatabase.getInstance().getReference("/GroupChats/${group.groupId}")
@@ -80,6 +85,40 @@ class GroupProfilePage : AppCompatActivity() {
 
         leaveGroupButton.setOnClickListener {
 
+        }
+
+        closeGroupButton.setOnClickListener {
+            FirebaseDatabase.getInstance()
+                .getReference("/users/${FirebaseAuth.getInstance().uid}/username")
+                .addValueEventListener(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val adminName = snapshot.getValue(String::class.java)
+                        for (member in group.members) {
+                            if(member != FirebaseAuth.getInstance().uid) {
+                                FirebaseDatabase.getInstance()
+                                    .getReference("/users/${member}/chats/${group.groupId}")
+                                    .removeValue()
+
+                                val not = FirebaseDatabase.getInstance()
+                                    .getReference("/users/${member}/notifications").push()
+                                not.setValue("$adminName has closed the group {${group.name}}.")
+                            }
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        TODO("Not yet implemented")
+                    }
+                })
+
+            FirebaseDatabase.getInstance().getReference("/GroupChats/${group.groupId}").removeValue()
+            FirebaseStorage.getInstance().getReference("/Profile Photos/${group.groupId}").delete()
+            FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/chats/${group.groupId}").removeValue().addOnSuccessListener {
+                val intent = Intent(this, MainPage::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
         }
     }
 
@@ -115,26 +154,12 @@ class GroupProfilePage : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
-                val intent = Intent(this@GroupProfilePage, GroupChatPage::class.java)
+                val intent = Intent(this@GroupAdminProfilePage, GroupChatPage::class.java)
                 intent.putExtra(NewFriendsPage.USER_KEY, group.groupId)
                 startActivity(intent)
                 finish()
             }
         }
         return super.onOptionsItemSelected(item)
-    }
-}
-
-// Class to display the group members
-class GroupMemberItem(val user: User): Item<GroupieViewHolder>(){
-    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = user.username
-        viewHolder.itemView.findViewById<TextView>(R.id.visibility_newfriend_row).text = user.visibility
-        if(user.profilePhoto!="")
-            Picasso.get().load(user.profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
-    }
-
-    override fun getLayout(): Int {
-        return R.layout.group_member_row
     }
 }

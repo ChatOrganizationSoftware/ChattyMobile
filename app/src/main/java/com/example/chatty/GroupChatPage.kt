@@ -1,11 +1,13 @@
 package com.example.chatty
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -35,12 +37,12 @@ class GroupChatPage : AppCompatActivity() {
     private lateinit var sendIcon: ImageView
     private lateinit var sendImageIcon: ImageView
     private lateinit var chatName: TextView
-    private lateinit var group: Group
+    private var group = Group()
     private var groupId: String? = null
     private var memberTable= HashMap<String, User>()
     private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
-    private val messages = mutableListOf<String>()
+    private val groupAdmins = mutableListOf<String>()
     private var selectedPhoto: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +50,13 @@ class GroupChatPage : AppCompatActivity() {
         setContentView(R.layout.group_chat_page)
 
         groupId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
+
+        if(groupId==null){
+            val intent = Intent(this, MainPage::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            startActivity(intent)
+            finish()
+        }
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -75,12 +84,22 @@ class GroupChatPage : AppCompatActivity() {
         FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 // Parse the user data from snapshot and update the UI
-                group = snapshot.getValue(Group::class.java)!!
+                group.name = snapshot.child("name").getValue(String::class.java).toString()
+                group.groupId = snapshot.child("groupId").getValue(String::class.java).toString()
+                group.groupPhoto =snapshot.child("groupPhoto").getValue(String::class.java).toString()
+                if(group.groupPhoto != "")
+                    Picasso.get().load(group.groupPhoto).into(friendChatProfilePhoto)
+                group.about = snapshot.child("about").getValue(String::class.java).toString()
                 chatName.text = group.name
-                val image = group.groupPhoto
-                if(image != "") {
-                    Picasso.get().load(image).into(friendChatProfilePhoto)
-                }
+
+                group.members = mutableListOf()
+                group.admins = mutableListOf()
+                for(mem in snapshot.child("members").children)
+                    mem.getValue(String::class.java)?.let { group.members.add(it) }
+                for(admin in snapshot.child("admins").children)
+                    admin.getValue(String::class.java)?.let { group.admins.add(it) }
+
+                fetchMembers()
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -88,17 +107,29 @@ class GroupChatPage : AppCompatActivity() {
             }
         })
 
-        fetchMembers()
 
         friendChatProfilePhoto.setOnClickListener {
-            val intent = Intent(this, GroupProfilePage::class.java)
-            intent.putExtra("Group", group)
-            val bundle = Bundle()
-            bundle.putSerializable("memberTable", memberTable)
-            intent.putExtra("Members", bundle)
-            startActivity(intent)
+            if (group.admins.contains(FirebaseAuth.getInstance().uid)) {
+                enteredMessage.clearFocus() // Clear focus from EditText
+                val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
+                val intent = Intent(this, GroupAdminProfilePage::class.java)
+                intent.putExtra("Group", group)
+                val bundle = Bundle()
+                bundle.putSerializable("memberTable", memberTable)
+                intent.putExtra("Members", bundle)
+                startActivity(intent)
+                finish()
+            }
+            else {
+                val intent = Intent(this, GroupProfilePage::class.java)
+                intent.putExtra("Group", group)
+                val bundle = Bundle()
+                bundle.putSerializable("memberTable", memberTable)
+                intent.putExtra("Members", bundle)
+                startActivity(intent)
+            }
         }
-
         sendIcon.setOnClickListener{
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
@@ -140,54 +171,21 @@ class GroupChatPage : AppCompatActivity() {
 
 
     private  fun fetchMembers(){
-        FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}/members")
-            .addChildEventListener(object: ChildEventListener{
-                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                    FirebaseDatabase.getInstance().getReference("/users/${snapshot.getValue(String::class.java)}")
+        for(mem in group.members){
+            FirebaseDatabase.getInstance().getReference("/users/${mem}")
                         .addValueEventListener(object : ValueEventListener {
                             override fun onDataChange(dataSnapshot: DataSnapshot) {
                                 val user = dataSnapshot.getValue(User::class.java) as User
                                 memberTable.put(user.userId, user)
-
-                                groupAdapter.clear()
-                                listenMessages()
                             }
 
                             override fun onCancelled(error: DatabaseError) {
                                 TODO("Not yet implemented")
                             }
                         })
-                }
-
-                override fun onChildRemoved(snapshot: DataSnapshot) {
-                    FirebaseDatabase.getInstance().getReference("/users/${snapshot.getValue(String::class.java)}")
-                        .addValueEventListener(object : ValueEventListener {
-                            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                                val user = dataSnapshot.getValue(User::class.java) as User
-                                memberTable.remove(user.userId)
-
-                                groupAdapter.clear()
-                                listenMessages()
-                            }
-
-                            override fun onCancelled(error: DatabaseError) {
-                                TODO("Not yet implemented")
-                            }
-                        })
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
-                }
-
-                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                    TODO("Not yet implemented")
-                }
-
-                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-                    TODO("Not yet implemented")
-                }
-            })
+        }
+        groupAdapter.clear()
+        listenMessages()
     }
 
     // Gets the all messages in the group rom the firebase

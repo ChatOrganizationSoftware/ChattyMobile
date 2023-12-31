@@ -33,6 +33,7 @@ class MainPage : AppCompatActivity() {
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        showToast("MAIN")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_page)
 
@@ -127,13 +128,16 @@ class MainPage : AppCompatActivity() {
                             })
                         }
                         else{
-                            var group: Group? = null
+                            var group = Group()
                             FirebaseDatabase.getInstance().getReference("/GroupChats/${inputChats[i]}")
                                 .addValueEventListener(object : ValueEventListener {
                                     override fun onDataChange(snapshot: DataSnapshot) {
                                         // Parse the user data from snapshot and update the UI
-                                        group = snapshot.getValue(Group::class.java)
-                                        groupAdapter.add(GroupItem(group!!))
+                                        group.name = snapshot.child("name").getValue(String::class.java).toString()
+                                        group.groupId = snapshot.child("groupId").getValue(String::class.java).toString()
+                                        if(snapshot.child("groupPhoto").exists())
+                                            group.groupPhoto = snapshot.child("groupPhoto").getValue(String::class.java).toString()
+                                        groupAdapter.add(GroupItem(group))
                                     }
 
                                     override fun onCancelled(error: DatabaseError) {

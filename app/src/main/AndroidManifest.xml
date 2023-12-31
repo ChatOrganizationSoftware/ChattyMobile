@@ -18,6 +18,9 @@
         android:theme="@style/Theme.Chatty"
         tools:targetApi="31">
         <activity
+            android:name=".GroupAdminProfilePage"
+            android:exported="false" />
+        <activity
             android:name=".DisplayImageGroupPage"
             android:exported="false" />
         <activity
@@ -36,7 +39,7 @@
             android:parentActivityName=".MainPage" />
         <activity
             android:name=".FriendProfilePage"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".NonFriendProfilePage"
             android:exported="false" />

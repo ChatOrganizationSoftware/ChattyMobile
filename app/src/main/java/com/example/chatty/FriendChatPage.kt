@@ -2,12 +2,14 @@ package com.example.chatty
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -38,7 +40,7 @@ class FriendChatPage : AppCompatActivity() {
     private lateinit var friendChatProfilePhoto: CircleImageView
     private lateinit var sendIcon: ImageView
     private lateinit var chatName: TextView
-    private lateinit var chat: IndividualChat
+    private var chat: IndividualChat? = null
     private var friend: User? = null
     private lateinit var databaseRef: DatabaseReference
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
@@ -47,10 +49,17 @@ class FriendChatPage : AppCompatActivity() {
 
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
+        showToast("CHAT")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_chat_page)
 
         chat = intent.getParcelableExtra<IndividualChat>(NewFriendsPage.USER_KEY)!!
+        if(chat==null){
+            val intent = Intent(this, MainPage::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            startActivity(intent)
+            finish()
+        }
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -73,10 +82,10 @@ class FriendChatPage : AppCompatActivity() {
         recyclerChatLog.adapter = groupAdapter
 
         var ref: DatabaseReference? = null
-        if(FirebaseAuth.getInstance().uid==chat.user1)
-            ref = FirebaseDatabase.getInstance().getReference("/users/${chat.user2}")
+        if(FirebaseAuth.getInstance().uid==chat!!.user1)
+            ref = FirebaseDatabase.getInstance().getReference("/users/${chat!!.user2}")
         else
-            ref = FirebaseDatabase.getInstance().getReference("/users/${chat.user1}")
+            ref = FirebaseDatabase.getInstance().getReference("/users/${chat!!.user1}")
 
             ref.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -98,14 +107,18 @@ class FriendChatPage : AppCompatActivity() {
                 }
             })
 
-        databaseRef = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chat.id}/Messages")
+        databaseRef = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chat!!.id}/Messages")
         listenMessages()
 
         // Go to user's profile page
         friendChatProfilePhoto.setOnClickListener {
+            enteredMessage.clearFocus() // Clear focus from EditText
+            val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
             val intent = Intent(this, FriendProfilePage::class.java)
             intent.putExtra(USER_KEY, friend)
             startActivity(intent)
+            finish()
         }
 
         // Send message icon
@@ -116,8 +129,8 @@ class FriendChatPage : AppCompatActivity() {
                 val message = IndividualMessage( ref.key!!, text, null, FirebaseAuth.getInstance().uid!!,Timestamp.now())
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now()
-                    FirebaseDatabase.getInstance().getReference("/users/${chat.user1}/chats/${chat.id}/time").setValue(time)
-                    FirebaseDatabase.getInstance().getReference("/users/${chat.user2}/chats/${chat.id}/time").setValue(time)
+                    FirebaseDatabase.getInstance().getReference("/users/${chat!!.user1}/chats/${chat!!.id}/time").setValue(time)
+                    FirebaseDatabase.getInstance().getReference("/users/${chat!!.user2}/chats/${chat!!.id}/time").setValue(time)
                     enteredMessage.setText("")
                 }
             }
@@ -192,7 +205,7 @@ class FriendChatPage : AppCompatActivity() {
 
             val intent = Intent(this, DisplayImagePage::class.java)
             intent.putExtra("PHOTO_SELECTED", selectedPhoto.toString())
-            intent.putExtra("CHAT_ID", chat.id)
+            intent.putExtra("CHAT_ID", chat!!.id)
             intent.putExtra("FRIEND_ID", friend?.userId)
             startActivity(intent)
         }

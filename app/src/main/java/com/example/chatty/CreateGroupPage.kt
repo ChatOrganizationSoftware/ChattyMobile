@@ -166,15 +166,15 @@ class CreateGroupPage : AppCompatActivity() {
 
     // Stores the group image in the Firebase Storage
     private fun saveNewImage(){
+        val filename = UUID.randomUUID().toString()
         if(newImage == null)            // If the user didn't select any image
-            createGroup("")
+            createGroup("", filename)
         else {
-            val filename = UUID.randomUUID().toString()
             val ref = FirebaseStorage.getInstance().getReference("/Profile Photos/${filename}")
 
             ref.putFile(newImage!!).addOnSuccessListener {
                 ref.downloadUrl.addOnSuccessListener {
-                    createGroup(it.toString())
+                    createGroup(it.toString(), filename)
                 }
             }.addOnFailureListener {
                 showToast("Failed to save the photo: ${it.message}")
@@ -183,11 +183,11 @@ class CreateGroupPage : AppCompatActivity() {
     }
 
     // Creates the group with the given image URI
-    private fun createGroup(profileImageUri: String){
-        val groupId = UUID.randomUUID().toString()
+    private fun createGroup(profileImageUri: String, groupId: String){
         val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}")
         FirebaseAuth.getInstance().uid?.let { members.add(it) }
-        var group = Group(groupId, auth.uid.toString(), nameEditText.text.toString(), profileImageUri, aboutEditText.text.toString(), members)
+        val admin = auth.uid.toString()
+        var group = Group(groupId, nameEditText.text.toString(), profileImageUri, aboutEditText.text.toString(), members)
 
         if(profileImageUri!="") {       // If the user selected an image
             group.groupPhoto = profileImageUri
@@ -201,6 +201,8 @@ class CreateGroupPage : AppCompatActivity() {
                 FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${groupId}/time").setValue(time)
                 FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${groupId}/group").setValue(true)
             }
+
+            ref.child("/admins").push().setValue(admin)
 
             finish()
         }.addOnFailureListener{
