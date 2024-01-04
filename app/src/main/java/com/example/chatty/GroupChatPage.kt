@@ -38,10 +38,9 @@ class GroupChatPage : AppCompatActivity() {
     private lateinit var sendImageIcon: ImageView
     private lateinit var chatName: TextView
     private var group = Group()
-    private var groupId: String? = null
+    private lateinit var groupId: String
     private var memberTable= HashMap<String, User>()
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
-    private val groupAdmins = mutableListOf<String>()
     private var selectedPhoto: Uri? = null
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
@@ -51,13 +50,6 @@ class GroupChatPage : AppCompatActivity() {
         setContentView(R.layout.group_chat_page)
 
         groupId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
-
-        if(groupId==null){
-            val intent = Intent(this, MainPage::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            startActivity(intent)
-            finish()
-        }
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -79,12 +71,21 @@ class GroupChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
+        listenMessages()
+
         // Gets the group information from the firebase
         databaseRef.getReference("/GroupChats/${groupId}").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                if(!snapshot.exists()){
+                    val intent = Intent(this@GroupChatPage, MainPage::class.java)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    startActivity(intent)
+                    finish()
+                }
+
                 // Parse the user data from snapshot and update the UI
                 group.name = snapshot.child("name").getValue(String::class.java).toString()
-                group.groupId = snapshot.child("groupId").getValue(String::class.java).toString()
+                group.groupId = groupId
                 group.groupPhoto =snapshot.child("groupPhoto").getValue(String::class.java).toString()
                 if(group.groupPhoto != "")
                     Picasso.get().load(group.groupPhoto).into(friendChatProfilePhoto)
@@ -92,13 +93,9 @@ class GroupChatPage : AppCompatActivity() {
                 chatName.text = group.name
 
                 group.members = mutableListOf()
-                group.admins = mutableListOf()
                 for(mem in snapshot.child("members").children)
                     mem.getValue(String::class.java)?.let { group.members.add(it) }
-                for(admin in snapshot.child("admins").children)
-                    admin.getValue(String::class.java)?.let { group.admins.add(it) }
-
-                fetchMembers()
+                group.adminId = snapshot.child("adminId").getValue(String::class.java)
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -106,9 +103,8 @@ class GroupChatPage : AppCompatActivity() {
             }
         })
 
-
         friendChatProfilePhoto.setOnClickListener {
-            if (group.admins.contains(uid)) {
+            if (group.adminId == uid) {
                 enteredMessage.clearFocus() // Clear focus from EditText
                 val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
@@ -127,14 +123,15 @@ class GroupChatPage : AppCompatActivity() {
                 finish()
             }
         }
+
         sendIcon.setOnClickListener{
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
                 val ref = databaseRef.getReference("/GroupChats/${groupId}/Messages").push()
 
-                val time = Timestamp.now()
-                val message = IndividualMessage( ref.key!!, text, null, uid!!, time)
+                val message = IndividualMessage( ref.key!!, text, null, uid!!)
                 ref.setValue(message).addOnSuccessListener {
+                    val time = Timestamp.now()
                     for(member in group.members){
                         databaseRef.getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
                     }
@@ -202,8 +199,13 @@ class GroupChatPage : AppCompatActivity() {
                         recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     }
                     else {
-                        val sender = memberTable[message.senderId]
-                        groupAdapter.add(GroupChatFromItem(message.message!!, sender!!.username, sender.profilePhoto))
+                        if(memberTable.containsKey(message.senderId)){
+                            val sender = memberTable[message.senderId]
+                            groupAdapter.add(GroupChatFromItem(message.message!!, sender!!.username))
+                        }
+                        else{
+                            databaseRef.getReference("/users/${}")
+                        }
                     }
                 }
                 else{
@@ -211,8 +213,10 @@ class GroupChatPage : AppCompatActivity() {
                         groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
                         recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     }
-                    else
-                        groupAdapter.add(FriendChatFromPhoto(message.photoURI!!))
+                    else {
+                        val sender = memberTable[message.senderId]
+                        groupAdapter.add(GroupChatFromPhoto(sender!!.username, message.photoURI!!))
+                    }
                 }
             }
 
@@ -251,16 +255,24 @@ class GroupChatPage : AppCompatActivity() {
 }
 
 // Class to display the messages coming from other users
-class GroupChatFromItem(val text: String, val username:String, val photoURI:String): Item<GroupieViewHolder>(){
+class GroupChatFromItem(val text: String, val username:String): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
         viewHolder.itemView.findViewById<TextView>(R.id.textViewFromRow).text = text
         viewHolder.itemView.findViewById<TextView>(R.id.chat_row_username).text = username
-        if(photoURI!=""){
-            Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.group_chat_row_image))
-        }
     }
 
     override fun getLayout(): Int {
         return R.layout.group_chat_from_row
+    }
+}
+
+class GroupChatFromPhoto(val username: String, val photoURI: String): Item<GroupieViewHolder>(){
+    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        viewHolder.itemView.findViewById<TextView>(R.id.chat_row_username).text = username
+        Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<ImageView>(R.id.sentPhoto))
+    }
+
+    override fun getLayout(): Int {
+        return R.layout.group_chat_from_photo
     }
 }
