@@ -119,7 +119,7 @@ class GroupChatPage : AppCompatActivity() {
                 val message = IndividualMessage( ref.key!!, text, null, uid!!)
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now()
-                    for(member in group.members){
+                    for(member in group.members.keys){
                         databaseRef.getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
                     }
                     enteredMessage.setText("")

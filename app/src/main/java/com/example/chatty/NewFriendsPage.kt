@@ -156,8 +156,7 @@ class NewFriendsPage : AppCompatActivity() {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 friends = mutableListOf()
                 for (snapshot in dataSnapshot.children) {
-                    val chat = snapshot.getValue(String::class.java)
-                    chat?.let { friends.add(it) }
+                    snapshot.key?.let { friends.add(it) }
                 }
 
 
