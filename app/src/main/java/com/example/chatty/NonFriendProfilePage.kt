@@ -27,7 +27,9 @@ class NonFriendProfilePage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.nonfriend_profile_page)
 
-        val user = intent.getParcelableExtra<User>(FriendChatPage.USER_KEY)
+        val userId = intent.getParcelableExtra<User>(FriendChatPage.USER_KEY)
+
+
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)
@@ -41,8 +43,8 @@ class NonFriendProfilePage : AppCompatActivity() {
         unblockButton = findViewById(R.id.unblockButton)
 
         // Get the user information from the firebase
-        val database = FirebaseDatabase.getInstance().getReference("users/${user?.userId}")
-        database.addValueEventListener(object : ValueEventListener {
+        val database = FirebaseDatabase.getInstance().getReference("users/${userId}")
+        database.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 // Parse the user data from snapshot and update the UI
                 nameField.text = snapshot.child("username").getValue(String::class.java)
@@ -62,9 +64,9 @@ class NonFriendProfilePage : AppCompatActivity() {
         })
 
         unblockButton.setOnClickListener {
-            if (user != null) {
-                FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/block/${user.userId}").removeValue()
-                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/blockedBy/${FirebaseAuth.getInstance().uid}").removeValue()
+            if (userId != null) {
+                FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/block/${userId}").removeValue()
+                FirebaseDatabase.getInstance().getReference("/users/${userId}/blockedBy/${FirebaseAuth.getInstance().uid}").removeValue()
                 finish()
             }
         }

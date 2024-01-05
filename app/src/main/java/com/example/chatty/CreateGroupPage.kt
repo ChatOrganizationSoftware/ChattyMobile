@@ -53,6 +53,8 @@ class CreateGroupPage : AppCompatActivity() {
 
     private var members = hashMapOf<String, String>()
 
+    private var clicked = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.create_group_page)
@@ -101,21 +103,22 @@ class CreateGroupPage : AppCompatActivity() {
 
         // Cancel the group creation
         cancelButton.setOnClickListener{
-            finish()
+            if(!clicked)
+                finish()
         }
 
         // Create the group
         confirmButton.setOnClickListener{
-            if(members.size==0){            // There should be at least 1 user selected
-                showToast("Error: You must select at least 1 member for a group")
+            if(!clicked) {
+                if (members.size == 0) {            // There should be at least 1 user selected
+                    showToast("Error: You must select at least 1 member for a group")
+                } else if (nameEditText.text.toString() == "") {  // Name of the group can't be empty
+                    showToast("Error: You should provide a group name")
+                } else {
+                    clicked = true
+                    saveNewImage()          // Start creating the group with saving the group image
+                }
             }
-            else if(nameEditText.text.toString()==""){  // Name of the group can't be empty
-                showToast("Error: You should provide a group name")
-            }
-            else{
-                saveNewImage()          // Start creating the group with saving the group image
-            }
-
         }
     }
 

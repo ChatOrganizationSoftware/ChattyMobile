@@ -76,8 +76,20 @@ class FriendChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
-        databaseRef.getReference("/IndividualChats/$chatId")
+        databaseRef.getReference("/IndividualChats/$chatId/deleted")
             .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.exists())
+                        finish()
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
+
+        databaseRef.getReference("/IndividualChats/$chatId")
+            .addListenerForSingleValueEvent(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if(snapshot.child("deleted").exists())
                         finish()
@@ -90,7 +102,7 @@ class FriendChatPage : AppCompatActivity() {
                     else
                         ref = databaseRef.getReference("/users/${chat!!.user1}")
 
-                    ref.addValueEventListener(object : ValueEventListener {
+                    ref.addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             // Parse the user data from snapshot and update the UI
                             friend = snapshot.getValue(User::class.java)
@@ -144,6 +156,10 @@ class FriendChatPage : AppCompatActivity() {
         }
 
         sendImageIcon.setOnClickListener{
+            enteredMessage.setText("")
+            enteredMessage.clearFocus() // Clear focus from EditText
+            val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
             val intent = Intent(Intent.ACTION_PICK)
             intent.type = "image/*"
             startActivityForResult(intent, 0)

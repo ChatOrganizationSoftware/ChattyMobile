@@ -109,7 +109,6 @@ class MainPage : AppCompatActivity() {
                                             user.profilePhoto
                                         )
                                     )
-                                    showToast(chat.group.toString())
                                 }.join() // Wait for UI update to complete
                             } else {
                                 val group: Group = getGroup(chat.id)
@@ -121,7 +120,6 @@ class MainPage : AppCompatActivity() {
                                             group.groupPhoto
                                         )
                                     )
-                                    showToast(chat.group.toString())
                                 }.join() // Wait for UI update to complete
                             }
                         }

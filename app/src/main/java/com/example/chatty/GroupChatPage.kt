@@ -43,6 +43,7 @@ class GroupChatPage : AppCompatActivity() {
     private var selectedPhoto: Uri? = null
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
+    private var listened = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,7 +84,10 @@ class GroupChatPage : AppCompatActivity() {
                     Picasso.get().load(group.groupPhoto).into(friendChatProfilePhoto)
                 chatName.text = group.name
 
-                listenMessages()
+                if(!listened) {
+                    listened = true
+                    listenMessages()
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -102,9 +106,11 @@ class GroupChatPage : AppCompatActivity() {
                 finish()
             }
             else {
+                enteredMessage.setText("")
                 enteredMessage.clearFocus() // Clear focus from EditText
                 val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
+
                 val intent = Intent(this, GroupProfilePage::class.java)
                 intent.putExtra("GROUP_ID", group.groupId)
                 startActivity(intent)
@@ -128,6 +134,11 @@ class GroupChatPage : AppCompatActivity() {
         }
 
         sendImageIcon.setOnClickListener {
+            enteredMessage.setText("")
+            enteredMessage.clearFocus() // Clear focus from EditText
+            val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
+
             val intent = Intent(Intent.ACTION_PICK)
             intent.type = "image/*"
             startActivityForResult(intent, 0)

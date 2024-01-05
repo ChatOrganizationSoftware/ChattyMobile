@@ -33,10 +33,14 @@ class NewFriendsPage : AppCompatActivity() {
     private var block = mutableListOf<String>()
     private lateinit var searchBar: EditText
     private var databaseRef = FirebaseDatabase.getInstance()
+    private var clicked = false
+    private var groupAdapter = GroupAdapter<GroupieViewHolder>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.new_friends_page)
+
+        clicked = false
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -45,6 +49,7 @@ class NewFriendsPage : AppCompatActivity() {
 
         searchBar = findViewById(R.id.searchBar)
         recyclerView = findViewById(R.id.recyclerViewNewUsers)
+        recyclerView.adapter = groupAdapter
 
         returnFriends()
 
@@ -68,6 +73,48 @@ class NewFriendsPage : AppCompatActivity() {
             }
         })
 
+        groupAdapter.setOnItemClickListener { item, view ->
+            if (!clicked) {
+                clicked = true
+                val userItem = item as NewUserItem
+                if (block.contains(userItem.user.userId)) {
+                    val intent = Intent(view.context, NonFriendProfilePage::class.java)
+                    intent.putExtra(USER_KEY, userItem.user.userId)
+                    startActivity(intent)
+                } else {
+                    val chatId = UUID.randomUUID().toString()
+                    val chat = IndividualChat(
+                        chatId,
+                        FirebaseAuth.getInstance().uid!!,
+                        userItem.user.userId
+                    )
+                    val chatRef = databaseRef.getReference("/IndividualChats/${chatId}")
+                    chatRef.setValue(chat).addOnFailureListener {
+                        showToast("Error: Couldn't create the chat")
+                    }.addOnSuccessListener {
+                        val time = Timestamp.now()
+                        databaseRef.getReference("/users/${chat.user1}/chats/${chat.id}/id")
+                            .setValue(chat.id)
+                        databaseRef.getReference("/users/${chat.user1}/chats/${chat.id}/time")
+                            .setValue(time)
+                        databaseRef.getReference("/users/${chat.user1}/friends/${chat.user2}")
+                            .setValue(chat.id)
+
+                        databaseRef.getReference("/users/${chat.user2}/chats/${chat.id}/id")
+                            .setValue(chat.id)
+                        databaseRef.getReference("/users/${chat.user2}/chats/${chat.id}/time")
+                            .setValue(time)
+                        databaseRef.getReference("/users/${chat.user2}/friends/${chat.user1}")
+                            .setValue(chat.id)
+
+                        val intent = Intent(view.context, FriendChatPage::class.java)
+                        intent.putExtra(USER_KEY, chat.id)
+                        startActivity(intent)
+                        finish()
+                    }
+                }
+            }
+        }
     }
 
     companion object{
@@ -79,56 +126,15 @@ class NewFriendsPage : AppCompatActivity() {
         val ref = databaseRef.getReference("/users").orderByChild("username")
         ref.addListenerForSingleValueEvent(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
-                val groupAdapter = GroupAdapter<GroupieViewHolder>()
                 snapshot.children.forEach{
                     val user = it.getValue(User::class.java)
-                    if (user != null && user.username!="" && it.key != FirebaseAuth.getInstance().currentUser?.uid && !friends.contains(user.userId) && !blockedBy.contains(user.userId) && user.active == true){
-                        if(user.username.startsWith(typedText, ignoreCase = true))
-                            groupAdapter.add(NewUserItem(user))
-                    }
-                }
-
-                groupAdapter.setOnItemClickListener { item, view ->
-                    val userItem = item as NewUserItem
-                    if(block.contains(userItem.user.userId)){
-                        val intent = Intent(view.context, NonFriendProfilePage::class.java)
-                        intent.putExtra(USER_KEY, userItem.user)
-                        startActivity(intent)
-                    }
-                    else {
-                        val chatId = UUID.randomUUID().toString()
-                        val chat = IndividualChat(
-                            chatId,
-                            FirebaseAuth.getInstance().uid!!,
-                            userItem.user.userId
-                        )
-                        val chatRef = databaseRef.getReference("/IndividualChats/${chatId}")
-                        chatRef.setValue(chat).addOnFailureListener {
-                            showToast("Error: Couldn't create the chat")
-                        }.addOnSuccessListener {
-                            val time = Timestamp.now()
-                            databaseRef.getReference("/users/${chat.user1}/chats/${chat.id}/id")
-                                .setValue(chat.id)
-                            databaseRef.getReference("/users/${chat.user1}/chats/${chat.id}/time")
-                                .setValue(time)
-                            databaseRef.getReference("/users/${chat.user1}/friends/${chat.user2}")
-                                .setValue(chat.id)
-
-                            databaseRef.getReference("/users/${chat.user2}/chats/${chat.id}/id")
-                                .setValue(chat.id)
-                            databaseRef.getReference("/users/${chat.user2}/chats/${chat.id}/time")
-                                .setValue(time)
-                            databaseRef.getReference("/users/${chat.user2}/friends/${chat.user1}")
-                                .setValue(chat.id)
-
-                            val intent = Intent(view.context, FriendChatPage::class.java)
-                            intent.putExtra(USER_KEY, chat.id)
-                            startActivity(intent)
-                            finish()
+                    if (user != null) {
+                        if (user.visibility =="Public" && user.username!="" && it.key != FirebaseAuth.getInstance().currentUser?.uid && !friends.contains(user.userId) && !blockedBy.contains(user.userId) && user.active == true){
+                            if(user.username.startsWith(typedText, ignoreCase = true))
+                                groupAdapter.add(NewUserItem(user))
                         }
                     }
                 }
-                recyclerView.adapter = groupAdapter
             }
 
             override fun onCancelled(error: DatabaseError) {

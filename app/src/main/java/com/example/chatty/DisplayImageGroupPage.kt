@@ -37,7 +37,8 @@ class DisplayImageGroupPage : AppCompatActivity() {
         }
 
         declineSend.setOnClickListener{
-            finish()
+            if(!clicked)
+                finish()
         }
 
         confirmSend.setOnClickListener {

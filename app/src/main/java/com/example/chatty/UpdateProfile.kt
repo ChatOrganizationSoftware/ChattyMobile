@@ -42,6 +42,8 @@ class UpdateProfile: AppCompatActivity() {
     private lateinit var oldImage: String
     private var newImage: Uri? = null
 
+    private var clicked = false
+
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,11 +107,15 @@ class UpdateProfile: AppCompatActivity() {
         }
 
         cancelButton.setOnClickListener{
-            finish()
+            if(!clicked)
+                finish()
         }
 
         confirmButton.setOnClickListener{
-            saveNewImage()
+            if(!clicked) {
+                clicked = true
+                saveNewImage()
+            }
         }
     }
 

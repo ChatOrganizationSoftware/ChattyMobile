@@ -18,7 +18,7 @@ class DisplayImagePage : AppCompatActivity() {
     private lateinit var photo: ImageView
     private lateinit var declineSend: ImageView
     private lateinit var confirmSend: ImageView
-    var clicked = false
+    private var clicked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +39,8 @@ class DisplayImagePage : AppCompatActivity() {
         }
 
         declineSend.setOnClickListener{
-            finish()
+            if(!clicked)
+                finish()
         }
 
         confirmSend.setOnClickListener {

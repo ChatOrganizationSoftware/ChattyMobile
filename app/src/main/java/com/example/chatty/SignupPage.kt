@@ -35,6 +35,7 @@ class SignupPage : AppCompatActivity() {
 
     private var showPassword = false
     private var showConfirm = false
+    private var clicked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,22 +86,26 @@ class SignupPage : AppCompatActivity() {
 
         // Click listener for Continue Button
         signUpButton.setOnClickListener {
-            val name = nameField.text.toString().trim()
-            val email = emailField.text.toString().trim()
-            val password = passwordField.text.toString().trim()
-            val confirmPass = confirmField.text.toString().trim()
-            if(name.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPass.isEmpty() )
-                showToast("Please fill all the fields")
-            else if(password != confirmPass)
-                showToast("Password and Confirm Password should match")
-            else{
-                register(email, password)
+            if (!clicked) {
+                clicked = true
+                val name = nameField.text.toString().trim()
+                val email = emailField.text.toString().trim()
+                val password = passwordField.text.toString().trim()
+                val confirmPass = confirmField.text.toString().trim()
+                if (name.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPass.isEmpty())
+                    showToast("Please fill all the fields")
+                else if (password != confirmPass)
+                    showToast("Password and Confirm Password should match")
+                else {
+                    register(email, password)
+                }
             }
         }
 
         // Click listener for Return to Login Button
         returnLoginButton.setOnClickListener {
-            finish()
+            if(!clicked)
+                finish()
         }
     }
 
