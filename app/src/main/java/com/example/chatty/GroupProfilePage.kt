@@ -10,10 +10,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.storage.FirebaseStorage
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
@@ -28,6 +30,7 @@ class GroupProfilePage : AppCompatActivity() {
     private lateinit var aboutField: TextView
     private lateinit var leaveGroupButton: Button
     private val groupAdapter = GroupAdapter<GroupieViewHolder>()
+    private val databaseRef = FirebaseDatabase.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,25 +50,17 @@ class GroupProfilePage : AppCompatActivity() {
         membersRecyclerView.adapter = groupAdapter
 
         // Gets the group information from the firebase
-        val database = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}")
+        val database = databaseRef.getReference("/GroupChats/${groupId}")
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                group.name = snapshot.child("name").getValue(String::class.java).toString()
-                group.groupId = snapshot.child("groupId").getValue(String::class.java).toString()
-                group.groupPhoto =snapshot.child("groupPhoto").getValue(String::class.java).toString()
+                if(!snapshot.exists())
+                    finish()
+                group = snapshot.getValue(Group::class.java)!!
                 if(group.groupPhoto != "")
                     Picasso.get().load(group.groupPhoto).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
 
-                group.about = snapshot.child("about").getValue(String::class.java).toString()
                 nameField.text = group.name
                 aboutField.text = group.about
-
-                group.members = mutableListOf()
-                group.admins = mutableListOf()
-                for(mem in snapshot.child("members").children)
-                    mem.getValue(String::class.java)?.let { group.members.add(it) }
-                for(admin in snapshot.child("admins").children)
-                    admin.getValue(String::class.java)?.let { group.admins.add(it) }
 
                 fetchMembers()
 
@@ -77,7 +72,46 @@ class GroupProfilePage : AppCompatActivity() {
         })
 
         leaveGroupButton.setOnClickListener {
+            val uid = FirebaseAuth.getInstance().uid
+            databaseRef.getReference("/users/$uid")
+                .addListenerForSingleValueEvent(object: ValueEventListener{
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        group.members.remove(uid)
+                        if(group.members.size <= 1){
+                            FirebaseStorage.getInstance().getReference("/Profile Photos/$groupId").delete()
+                            for(mem in group.members.keys){
+                                databaseRef.getReference("/users/$mem/chats/$groupId").removeValue()
+                                    .addOnSuccessListener {
+                                        databaseRef.getReference("/users/$mem/notifications").push()
+                                            .setValue("{${group.name}} is closed")
+                                    }
+                            }
 
+                            databaseRef.getReference("/GroupChats/$groupId/deleted").setValue(true)
+                                .addOnCompleteListener {
+                                    databaseRef.getReference("/users/$uid/chats/$groupId").removeValue().addOnSuccessListener {
+                                        finish()
+                                    }
+                                }
+
+                        }
+                        else {
+                            val username = snapshot.child("username").getValue(String::class.java)
+                            databaseRef.getReference("/GroupChats/$groupId/members/$uid")
+                                .removeValue()
+                            databaseRef.getReference("/GroupChats/$groupId/prevMembers/$uid")
+                                .setValue(username)
+                            databaseRef.getReference("/users/$uid/chats/$groupId").removeValue()
+                                .addOnSuccessListener {
+                                    finish()
+                                }
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        TODO("Not yet implemented")
+                    }
+                })
         }
     }
 
@@ -87,8 +121,8 @@ class GroupProfilePage : AppCompatActivity() {
 
     private fun fetchMembers(){
         members = mutableListOf()
-        for(member in group.members){
-            FirebaseDatabase.getInstance().getReference("/users/${member}")
+        for(member in group.members.keys){
+            databaseRef.getReference("/users/${member}")
                 .addValueEventListener(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         // Parse the user data from snapshot and update the UI
@@ -117,9 +151,6 @@ class GroupProfilePage : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
-                val intent = Intent(this@GroupProfilePage, GroupChatPage::class.java)
-                intent.putExtra(NewFriendsPage.USER_KEY, group.groupId)
-                startActivity(intent)
                 finish()
             }
         }

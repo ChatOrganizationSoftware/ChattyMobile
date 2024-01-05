@@ -51,11 +51,26 @@ class CreateGroupPage : AppCompatActivity() {
 
     private var newImage: Uri? = null
 
-    private var members = mutableListOf<String>()
+    private var members = hashMapOf<String, String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.create_group_page)
+
+        auth = FirebaseAuth.getInstance()
+
+        FirebaseDatabase.getInstance().getReference("/users/${auth.uid}/username")
+            .addListenerForSingleValueEvent(object : ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!members.keys.contains(auth.uid))
+                        auth.uid?.let { snapshot.getValue(String::class.java)
+                            ?.let { it1 -> members.put(it, it1) } }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
 
         // Toolbar above the screen
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
@@ -73,8 +88,6 @@ class CreateGroupPage : AppCompatActivity() {
 
         usersList = findViewById(R.id.recyclerviewUsers)
         usersList.adapter = groupAdapter
-
-        auth = FirebaseAuth.getInstance()
 
         // Click listener to select photo for the group
         editProfilePhoto.setOnClickListener{
@@ -109,12 +122,12 @@ class CreateGroupPage : AppCompatActivity() {
     // Fetch friends to select the ones added to group
     private fun fetchFriends(){
         val ref = FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/friends")
-        ref.addValueEventListener(object: ValueEventListener {
+        ref.addListenerForSingleValueEvent(object: ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot){
                 snapshot.children.forEach{
                     val userId = it.key
 
-                    FirebaseDatabase.getInstance().getReference("/users/${userId}").addValueEventListener(object: ValueEventListener {
+                    FirebaseDatabase.getInstance().getReference("/users/${userId}").addListenerForSingleValueEvent(object: ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             val user = snapshot.getValue(User::class.java)
                             if (user != null){
@@ -133,7 +146,7 @@ class CreateGroupPage : AppCompatActivity() {
                     val userItem = item as GroupUserItem
                     if(!userItem.selected){
                         userItem.selected = true
-                        members.add(userItem.user.userId)
+                        members.put(userItem.user.userId, userItem.user.username)
                         view.findViewById<ConstraintLayout>(R.id.chat_row_background).setBackgroundColor(Color.parseColor("#504F4F"))
                         view.findViewById<TextView>(R.id.username_newfriend_row).setTextColor(Color.WHITE)
                     }
@@ -185,24 +198,17 @@ class CreateGroupPage : AppCompatActivity() {
     // Creates the group with the given image URI
     private fun createGroup(profileImageUri: String, groupId: String){
         val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}")
-        FirebaseAuth.getInstance().uid?.let { members.add(it) }
-        val admin = auth.uid.toString()
         var group = Group(groupId, nameEditText.text.toString(), profileImageUri, aboutEditText.text.toString(), members)
-
-        if(profileImageUri!="") {       // If the user selected an image
-            group.groupPhoto = profileImageUri
-        }
+        group.adminId = auth.uid.toString()
 
         // Add the group to all the members' chat list
         ref.setValue(group).addOnSuccessListener {
             val time = Timestamp.now()
-            for(member in members){
+            for(member in members.keys){
                 FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${groupId}/id").setValue(groupId)
                 FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${groupId}/time").setValue(time)
                 FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${groupId}/group").setValue(true)
             }
-
-            ref.child("/admins").push().setValue(admin)
 
             finish()
         }.addOnFailureListener{

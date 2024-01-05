@@ -16,6 +16,7 @@ class DisplayImageGroupPage : AppCompatActivity() {
     private lateinit var photo: ImageView
     private lateinit var declineSend: ImageView
     private lateinit var confirmSend: ImageView
+    var clicked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,8 +41,10 @@ class DisplayImageGroupPage : AppCompatActivity() {
         }
 
         confirmSend.setOnClickListener {
-            uploadImagetoFirebase()
-            finish()
+            if(!clicked) {
+                clicked = true
+                uploadImagetoFirebase()
+            }
         }
     }
 
@@ -62,12 +65,12 @@ class DisplayImageGroupPage : AppCompatActivity() {
 
     private fun saveMessagetoFirebase(imageUri: String){
         val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${group?.groupId}/Messages").push()
-        val time = Timestamp.now()
-        val message = IndividualMessage( ref.key!!, null, imageUri, FirebaseAuth.getInstance().uid!!,
-            time)
+        val message = IndividualMessage( ref.key!!, null, imageUri, FirebaseAuth.getInstance().uid!!,)
         ref.setValue(message).addOnSuccessListener {
+            val time = Timestamp.now()
             for(member in group?.members!!)
                 FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group?.groupId}/time").setValue(time)
+            finish()
         }
     }
 }

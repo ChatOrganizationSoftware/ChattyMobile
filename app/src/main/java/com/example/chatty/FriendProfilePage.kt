@@ -38,6 +38,7 @@ class FriendProfilePage : AppCompatActivity() {
     private var user: User? = null
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
+    private var deleted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +46,19 @@ class FriendProfilePage : AppCompatActivity() {
 
         val userId = intent.getStringExtra(FriendChatPage.USER_KEY)
         chatId = intent.getStringExtra("CHAT_ID")
+
+        databaseRef.getReference("/IndividualChats/$chatId")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.child("deleted").exists() && !deleted){
+                        finish()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)
@@ -58,7 +72,7 @@ class FriendProfilePage : AppCompatActivity() {
         removeChatButton = findViewById(R.id.deleteChat)
 
         databaseRef.getReference("/users/${uid}/username")
-            .addValueEventListener(object: ValueEventListener{
+            .addListenerForSingleValueEvent(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
                     currentUser = snapshot.getValue(String::class.java)
                 }
@@ -69,14 +83,15 @@ class FriendProfilePage : AppCompatActivity() {
             })
 
         databaseRef.getReference("/users/${userId}")
-            .addValueEventListener(object: ValueEventListener{
+            .addListenerForSingleValueEvent(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
                     user = snapshot.getValue(User::class.java)
                     nameField.text = user!!.username
                     aboutField.text = user!!.about
                     visibility.text = user!!.visibility
-                    if(user!!.profilePhoto != "") {
-                        Picasso.get().load(user!!.profilePhoto).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
+                    if (user!!.profilePhoto != "") {
+                        Picasso.get().load(user!!.profilePhoto)
+                            .into(findViewById<CircleImageView>(R.id.friend_profile_photo))
                     }
                 }
 
@@ -86,64 +101,43 @@ class FriendProfilePage : AppCompatActivity() {
             })
 
         removeChatButton.setOnClickListener {
-            if (user != null) {
-                val folderRef = FirebaseStorage.getInstance().getReference("/$chatId")
-                folderRef.listAll().addOnSuccessListener { list ->
-                    list.items.forEach {
-                        it.delete()
-                    }
-                }
+            deleted = true
 
-                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}")
-                    .removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}")
-                    .removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}")
-                    .removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/notifications")
-                    .push().setValue("$currentUser has removed your chat.")
-                databaseRef.getReference("/IndividualChats/${chatId}")
-                    .removeValue()
-                databaseRef.getReference("/users/${uid}/chats/${chatId}")
-                    .removeValue().addOnSuccessListener {
-                        showToast("ACTIVITY")
-                        val intent = Intent(this, MainPage::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
-                        startActivity(intent)
-                        finish()
+            if (user != null) {
+                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("$currentUser has removed your chat.")
+
+                databaseRef.getReference("/IndividualChats/$chatId/deleted").setValue(true)
+                    .addOnCompleteListener {
+                        databaseRef.getReference("/users/${uid}/chats/${chatId}")
+                            .removeValue().addOnCompleteListener {
+                                finish()
+                            }
                     }
             }
         }
 
         blockButton.setOnClickListener {
+            deleted = true
             if (user != null) {
+
                 databaseRef.getReference("/users/${uid}/block/${user!!.userId}").setValue(user!!.userId)
                 databaseRef.getReference("/users/${user!!.userId}/blockedBy/${uid}").setValue(uid)
 
-                val folderRef = FirebaseStorage.getInstance().getReference("/$chatId")
-                folderRef.listAll().addOnSuccessListener { list ->
-                    list.items.forEach {
-                        it.delete()
+                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("$currentUser has blocked you.")
+                databaseRef.getReference("/IndividualChats/$chatId/deleted").setValue(true)
+                    .addOnCompleteListener {
+                        databaseRef.getReference("/users/${uid}/chats/${chatId}")
+                            .removeValue().addOnCompleteListener {
+                                finish()
+                            }
                     }
-                }
 
-                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}")
-                    .removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}")
-                    .removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}")
-                    .removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/notifications")
-                    .push().setValue("$currentUser has blocked you.")
-                databaseRef.getReference("/IndividualChats/${chatId}")
-                    .removeValue()
-                databaseRef.getReference("/users/${uid}/chats/${chatId}")
-                    .removeValue().addOnSuccessListener {
-                        val intent = Intent(this, MainPage::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
-                        startActivity(intent)
-                        finish()
-                    }
             }
         }
     }
@@ -157,20 +151,7 @@ class FriendProfilePage : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
-                databaseRef.getReference("/IndividualChats/$chatId")
-                    .addValueEventListener(object: ValueEventListener{
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            val chat = snapshot.getValue(IndividualChat::class.java)
-                            val intent = Intent(this@FriendProfilePage, FriendChatPage::class.java)
-                            intent.putExtra(NewFriendsPage.USER_KEY, chat!!.id)
-                            startActivity(intent)
-                            finish()
-                        }
-
-                        override fun onCancelled(error: DatabaseError) {
-                            TODO("Not yet implemented")
-                        }
-                    })
+                finish()
             }
         }
         return super.onOptionsItemSelected(item)

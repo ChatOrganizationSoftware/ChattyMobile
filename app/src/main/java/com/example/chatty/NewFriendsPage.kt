@@ -82,7 +82,7 @@ class NewFriendsPage : AppCompatActivity() {
                 val groupAdapter = GroupAdapter<GroupieViewHolder>()
                 snapshot.children.forEach{
                     val user = it.getValue(User::class.java)
-                    if (user != null && user.username!="" && it.key != FirebaseAuth.getInstance().currentUser?.uid && !friends.contains(user.userId) && !blockedBy.contains(user.userId)){
+                    if (user != null && user.username!="" && it.key != FirebaseAuth.getInstance().currentUser?.uid && !friends.contains(user.userId) && !blockedBy.contains(user.userId) && user.active == true){
                         if(user.username.startsWith(typedText, ignoreCase = true))
                             groupAdapter.add(NewUserItem(user))
                     }
@@ -96,7 +96,6 @@ class NewFriendsPage : AppCompatActivity() {
                         startActivity(intent)
                     }
                     else {
-
                         val chatId = UUID.randomUUID().toString()
                         val chat = IndividualChat(
                             chatId,
@@ -123,9 +122,8 @@ class NewFriendsPage : AppCompatActivity() {
                                 .setValue(chat.id)
 
                             val intent = Intent(view.context, FriendChatPage::class.java)
-                            intent.putExtra(USER_KEY, chat)
+                            intent.putExtra(USER_KEY, chat.id)
                             startActivity(intent)
-
                             finish()
                         }
                     }

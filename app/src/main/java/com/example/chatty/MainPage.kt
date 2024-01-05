@@ -34,9 +34,10 @@ class MainPage : AppCompatActivity() {
     private var databaseRef = FirebaseDatabase.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        showToast("MAIN")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_page)
+
+        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/active").setValue(true)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)

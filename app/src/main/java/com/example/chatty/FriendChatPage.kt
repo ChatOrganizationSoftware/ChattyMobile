@@ -55,12 +55,6 @@ class FriendChatPage : AppCompatActivity() {
         setContentView(R.layout.friend_chat_page)
 
         val chatId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
-        if(chatId=="" || chatId==null){
-            val intent = Intent(this, MainPage::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            startActivity(intent)
-            finish()
-        }
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -82,13 +76,13 @@ class FriendChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
-        databaseRef.getReference("IndividualChats/$chatId")
+        databaseRef.getReference("/IndividualChats/$chatId")
             .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    chat = snapshot.getValue(IndividualChat::class.java)
-                    if(chat==null){
+                    if(snapshot.child("deleted").exists())
                         finish()
-                    }
+
+                    chat = snapshot.getValue(IndividualChat::class.java)
 
                     var ref: DatabaseReference? = null
                     if(uid==chat!!.user1)
@@ -132,7 +126,6 @@ class FriendChatPage : AppCompatActivity() {
             intent.putExtra(USER_KEY, friend!!.userId)
             intent.putExtra("CHAT_ID", chatId)
             startActivity(intent)
-            finish()
         }
 
         // Send message icon
@@ -140,7 +133,7 @@ class FriendChatPage : AppCompatActivity() {
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
                 val ref = databaseRef.getReference("/IndividualChats/${chatId}/Messages").push()
-                val message = IndividualMessage( ref.key!!, text, null, uid!!,Timestamp.now())
+                val message = IndividualMessage( ref.key!!, text, null, uid!!)
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now()
                     databaseRef.getReference("/users/${chat!!.user1}/chats/${chat!!.id}/time").setValue(time)

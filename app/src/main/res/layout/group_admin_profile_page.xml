@@ -97,7 +97,7 @@
                 android:layout_height="50dp"
                 android:layout_marginBottom="20dp"
                 android:backgroundTint="#781911"
-                android:text="Leave Grouo"
+                android:text="Leave Group"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.5"

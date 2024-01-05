@@ -18,8 +18,7 @@ class DisplayImagePage : AppCompatActivity() {
     private lateinit var photo: ImageView
     private lateinit var declineSend: ImageView
     private lateinit var confirmSend: ImageView
-    private var isGroup = false
-
+    var clicked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,8 +43,10 @@ class DisplayImagePage : AppCompatActivity() {
         }
 
         confirmSend.setOnClickListener {
-            uploadImagetoFirebase()
-            finish()
+            if(!clicked) {
+                clicked = true
+                uploadImagetoFirebase()
+            }
         }
 
     }
@@ -68,12 +69,12 @@ class DisplayImagePage : AppCompatActivity() {
     private fun saveMessagetoFirebase(imageUri: String){
 
         val ref = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chatId}/Messages").push()
-        val time = Timestamp.now()
-        val message = IndividualMessage( ref.key!!, null, imageUri, FirebaseAuth.getInstance().uid!!,
-            time)
-        ref.setValue(message).addOnSuccessListener {
+        val message = IndividualMessage( ref.key!!, null, imageUri, FirebaseAuth.getInstance().uid!!,)
+        ref.setValue(message).addOnCompleteListener {
+            val time = Timestamp.now()
             FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/chats/${chatId}/time").setValue(time)
             FirebaseDatabase.getInstance().getReference("/users/${friendId}/chats/${chatId}/time").setValue(time)
+            finish()
         }
     }
 

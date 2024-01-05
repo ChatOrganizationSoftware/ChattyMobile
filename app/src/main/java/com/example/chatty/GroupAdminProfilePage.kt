@@ -33,7 +33,6 @@ class GroupAdminProfilePage : AppCompatActivity() {
     private val groupAdapter = GroupAdapter<GroupieViewHolder>()
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.group_admin_profile_page)
@@ -57,25 +56,18 @@ class GroupAdminProfilePage : AppCompatActivity() {
         val database = databaseRef.getReference("/GroupChats/${groupId}")
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                group.name = snapshot.child("name").getValue(String::class.java).toString()
-                group.groupId = snapshot.child("groupId").getValue(String::class.java).toString()
-                group.groupPhoto =snapshot.child("groupPhoto").getValue(String::class.java).toString()
+                if(!snapshot.exists())
+                    finish()
+                group = snapshot.getValue(Group::class.java)!!
+                if(!group.members.keys.contains(uid))
+                    finish()
                 if(group.groupPhoto != "")
                     Picasso.get().load(group.groupPhoto).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
 
-                group.about = snapshot.child("about").getValue(String::class.java).toString()
                 nameField.text = group.name
                 aboutField.text = group.about
 
-                group.members = mutableListOf()
-                group.admins = mutableListOf()
-                for(mem in snapshot.child("members").children)
-                    mem.getValue(String::class.java)?.let { group.members.add(it) }
-                for(admin in snapshot.child("admins").children)
-                    admin.getValue(String::class.java)?.let { group.admins.add(it) }
-
                 fetchMembers()
-
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -84,38 +76,72 @@ class GroupAdminProfilePage : AppCompatActivity() {
         })
 
         leaveGroupButton.setOnClickListener {
-
-        }
-
-        closeGroupButton.setOnClickListener {
-            databaseRef.getReference("/users/${uid}/username")
-                .addValueEventListener(object : ValueEventListener {
+            val uid = FirebaseAuth.getInstance().uid
+            databaseRef.getReference("/users/$uid/username")
+                .addListenerForSingleValueEvent(object: ValueEventListener{
                     override fun onDataChange(snapshot: DataSnapshot) {
-                        val adminName = snapshot.getValue(String::class.java)
-                        for (member in group.members) {
-                            if(member != uid) {
-                                databaseRef.getReference("/users/${member}/chats/${group.groupId}")
+                        group.members.remove(uid)
+                            if (group.members.keys.size > 1) {
+                                val username = snapshot.getValue(String::class.java)
+                                databaseRef.getReference("/GroupChats/$groupId/members/$uid")
                                     .removeValue()
-
-                                val not = databaseRef.getReference("/users/${member}/notifications").push()
-                                not.setValue("$adminName has closed the group {${group.name}}.")
+                                databaseRef.getReference("/GroupChats/$groupId/prevMembers/$uid")
+                                    .setValue(username)
+                                databaseRef.getReference("/GroupChats/$groupId/adminId")
+                                    .setValue(group.members.keys.sorted()[0])
+                                databaseRef.getReference("/users/$uid/chats/$groupId").removeValue().addOnCompleteListener {
+                                    val intent =
+                                        Intent(this@GroupAdminProfilePage, MainPage::class.java)
+                                    intent.flags =
+                                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    startActivity(intent)
+                                    finish()
+                                }
+                            } else {
+                                for (mem in group.members.keys) {
+                                    databaseRef.getReference("/users/$mem/chats/$groupId")
+                                        .removeValue()
+                                    databaseRef.getReference("/users/$mem/notifications").push()
+                                        .setValue("{${group.name}} is closed")
+                                }
+                                databaseRef.getReference("/GroupChats/$groupId/deleted").setValue(true)
+                                    .addOnCompleteListener {
+                                        databaseRef.getReference("/users/$uid/chats/$groupId").removeValue().addOnSuccessListener {
+                                            finish()
+                                        }
+                                    }
                             }
-                        }
                     }
 
                     override fun onCancelled(error: DatabaseError) {
                         TODO("Not yet implemented")
                     }
                 })
+        }
 
-            databaseRef.getReference("/GroupChats/${group.groupId}").removeValue()
-            FirebaseStorage.getInstance().getReference("/Profile Photos/${group.groupId}").delete()
-            databaseRef.getReference("/users/${uid}/chats/${group.groupId}").removeValue().addOnSuccessListener {
-                val intent = Intent(this, MainPage::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-                finish()
-            }
+        closeGroupButton.setOnClickListener {
+            databaseRef.getReference("/users/${uid}/username")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val adminName = snapshot.getValue(String::class.java)
+                        for (member in group.members.keys) {
+                            if (member != uid) {
+                                databaseRef.getReference("/users/${member}/chats/${group.groupId}").removeValue()
+                                databaseRef.getReference("/users/${member}/notifications").push().setValue("$adminName has closed the group {${group.name}}.")
+                            }
+                        }
+                        databaseRef.getReference("/GroupChats/$groupId/deleted").setValue(true)
+                            .addOnCompleteListener {
+                                databaseRef.getReference("/users/$uid/chats/$groupId").removeValue().addOnSuccessListener {
+                                    finish()
+                                }
+                            }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        TODO("Not yet implemented")
+                    }
+                })
         }
     }
 
@@ -125,9 +151,9 @@ class GroupAdminProfilePage : AppCompatActivity() {
 
     private fun fetchMembers(){
         members = mutableListOf()
-        for(member in group.members){
+        for(member in group.members.keys){
             databaseRef.getReference("/users/${member}")
-                .addValueEventListener(object : ValueEventListener {
+                .addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         // Parse the user data from snapshot and update the UI
                         val user = snapshot.getValue(User::class.java)!!
@@ -148,15 +174,18 @@ class GroupAdminProfilePage : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.friend_profile_menu, menu)
+        menuInflater.inflate(R.menu.profile_menu, menu)
         return super.onCreateOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
-                val intent = Intent(this@GroupAdminProfilePage, GroupChatPage::class.java)
-                intent.putExtra(NewFriendsPage.USER_KEY, group.groupId)
+                finish()
+            }
+            R.id.profile_edit_profile ->{
+                val intent = Intent(this, GroupUpdatePage::class.java)
+                intent.putExtra("GROUP_ID", group.groupId)
                 startActivity(intent)
                 finish()
             }
