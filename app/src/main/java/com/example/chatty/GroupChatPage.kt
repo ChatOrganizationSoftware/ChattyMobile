@@ -49,6 +49,18 @@ class GroupChatPage : AppCompatActivity() {
 
         groupId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
 
+        databaseRef.getReference("/users/$uid/chats/$groupId/read")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.exists() && snapshot.getValue(Boolean::class.java) == false)
+                        snapshot.ref.setValue(true)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
+
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -70,7 +82,8 @@ class GroupChatPage : AppCompatActivity() {
         recyclerChatLog.adapter = groupAdapter
 
         // Gets the group information from the firebase
-        databaseRef.getReference("/GroupChats/${groupId}").addValueEventListener(object : ValueEventListener {
+        databaseRef.getReference("/GroupChats/${groupId}")
+            .addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if(snapshot.child("deleted").exists())
                     finish()
@@ -141,6 +154,7 @@ class GroupChatPage : AppCompatActivity() {
                     val time = Timestamp.now().seconds
                     for(member in group.members.keys){
                         databaseRef.getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
+                        databaseRef.getReference("/users/${member}/chats/${group.groupId}/read").setValue(false)
                     }
                     enteredMessage.setText("")
                 }

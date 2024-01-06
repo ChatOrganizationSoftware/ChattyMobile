@@ -67,10 +67,12 @@ class DisplayImageGroupPage : AppCompatActivity() {
     private fun saveMessagetoFirebase(imageUri: String){
         val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${group?.groupId}/Messages").push()
         val message = IndividualMessage( ref.key!!, null, imageUri, FirebaseAuth.getInstance().uid!!,)
-        ref.setValue(message).addOnSuccessListener {
+        ref.setValue(message).addOnCompleteListener {
             val time = Timestamp.now().seconds
-            for(member in group?.members!!)
+            for(member in group?.members!!) {
                 FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group?.groupId}/time").setValue(time)
+                FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group?.groupId}/read").setValue(false)
+            }
             finish()
         }
     }

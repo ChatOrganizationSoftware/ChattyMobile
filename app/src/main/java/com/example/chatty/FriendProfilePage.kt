@@ -96,7 +96,7 @@ class FriendProfilePage : AppCompatActivity() {
                 databaseRef.getReference("/users/${uid}/friends/${user!!.userId}").removeValue()
                 databaseRef.getReference("/users/${user!!.userId}/friends/${uid}").removeValue()
                 databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}").removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("$currentUser has removed your chat.")
+                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("{$currentUser} has removed your chat.")
 
                 databaseRef.getReference("/IndividualChats/$chatId/deleted").setValue(true)
                     .addOnCompleteListener {
@@ -118,7 +118,7 @@ class FriendProfilePage : AppCompatActivity() {
                 databaseRef.getReference("/users/${uid}/friends/${user!!.userId}").removeValue()
                 databaseRef.getReference("/users/${user!!.userId}/friends/${uid}").removeValue()
                 databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}").removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("$currentUser has blocked you.")
+                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("{$currentUser} has blocked you.")
                 databaseRef.getReference("/IndividualChats/$chatId/deleted").setValue(true)
                     .addOnCompleteListener {
                         databaseRef.getReference("/users/${uid}/chats/${chatId}")

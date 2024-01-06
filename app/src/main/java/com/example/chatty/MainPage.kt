@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -87,6 +88,7 @@ class MainPage : AppCompatActivity() {
                 groupAdapter.clear()
                 for(data in snapshot.children){
                     val chat = Chat(data.child("id").getValue(String::class.java)!!, data.child("group").exists(), data.child("time").getValue(Long::class.java)!!)
+                    chat.read = data.child("read").getValue(Boolean::class.java) != false
                     inputChats.add(chat)
                 }
 
@@ -100,7 +102,8 @@ class MainPage : AppCompatActivity() {
                                         ChatItem(
                                             chat.id,
                                             user.username,
-                                            user.profilePhoto
+                                            user.profilePhoto,
+                                            chat.read
                                         )
                                     )
                                 }.join() // Wait for UI update to complete
@@ -111,7 +114,8 @@ class MainPage : AppCompatActivity() {
                                         GroupItem(
                                             chat.id,
                                             group.name,
-                                            group.groupPhoto
+                                            group.groupPhoto,
+                                            chat.read
                                         )
                                     )
                                 }.join() // Wait for UI update to complete
@@ -185,8 +189,12 @@ class MainPage : AppCompatActivity() {
 }
 
 // Class to display the chats
-class ChatItem(val chatId:String, val username: String, val profilePhoto: String): Item<GroupieViewHolder>(){
+class ChatItem(val chatId:String, val username: String, val profilePhoto: String, var read: Boolean): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        if(!read)
+            viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.VISIBLE
+        else
+            viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.INVISIBLE
         viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = username
         if(profilePhoto!="")
             Picasso.get().load(profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
@@ -198,8 +206,13 @@ class ChatItem(val chatId:String, val username: String, val profilePhoto: String
 }
 
 // Class to display the groups
-class GroupItem(val groupId: String, val name: String, val groupPhoto: String): Item<GroupieViewHolder>(){
+class GroupItem(val groupId: String, val name: String, val groupPhoto: String, var read: Boolean): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        if(!read)
+            viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.VISIBLE
+        else
+            viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.INVISIBLE
+
         viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = name
         if(groupPhoto!="")
             Picasso.get().load(groupPhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))

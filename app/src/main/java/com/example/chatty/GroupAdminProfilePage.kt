@@ -104,7 +104,7 @@ class GroupAdminProfilePage : AppCompatActivity() {
                         for (member in group.members.keys) {
                             if (member != uid && group.members[member] == true) {
                                 databaseRef.getReference("/users/${member}/chats/${group.groupId}").removeValue()
-                                databaseRef.getReference("/users/${member}/notifications").push().setValue("$adminName has closed the group {${group.name}}.")
+                                databaseRef.getReference("/users/${member}/notifications").push().setValue("{${group.name}} is closed.")
                             }
                         }
                         databaseRef.getReference("/GroupChats/$groupId/deleted").setValue(true)
@@ -181,7 +181,7 @@ class GroupAdminProfilePage : AppCompatActivity() {
             viewHolder.itemView.findViewById<ImageView>(R.id.removeMember).setOnClickListener {
                 FirebaseDatabase.getInstance().getReference("/GroupChats/${group.groupId}/members/${user.userId}").setValue(false)
                 FirebaseDatabase.getInstance().getReference("/users/${user.userId}/chats/${group.groupId}").removeValue()
-                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/notifications").push().setValue("Your are removed from the group {${group.name}}")
+                FirebaseDatabase.getInstance().getReference("/users/${user.userId}/notifications").push().setValue("Your are removed from the group {${group.name}}.")
             }
             if(user.profilePhoto!="")
                 Picasso.get().load(user.profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))

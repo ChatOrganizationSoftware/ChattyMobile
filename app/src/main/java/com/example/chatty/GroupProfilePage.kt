@@ -113,7 +113,7 @@ class GroupProfilePage : AppCompatActivity() {
                                         .addOnSuccessListener {
                                             databaseRef.getReference("/users/$mem/notifications")
                                                 .push()
-                                                .setValue("{${group.name}} is closed")
+                                                .setValue("{${group.name}} is closed.")
                                         }
                                 }
                             }

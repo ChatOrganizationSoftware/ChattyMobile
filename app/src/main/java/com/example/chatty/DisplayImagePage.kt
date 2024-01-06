@@ -74,6 +74,7 @@ class DisplayImagePage : AppCompatActivity() {
             val time = Timestamp.now().seconds
             FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/chats/${chatId}/time").setValue(time)
             FirebaseDatabase.getInstance().getReference("/users/${friendId}/chats/${chatId}/time").setValue(time)
+            FirebaseDatabase.getInstance().getReference("/users/${friendId}/chats/${chatId}/read").setValue(false)
             finish()
         }
     }

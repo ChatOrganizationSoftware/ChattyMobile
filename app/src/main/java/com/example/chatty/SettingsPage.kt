@@ -78,7 +78,7 @@ class SettingsPage: AppCompatActivity() {
                                             .removeValue()
                                         databaseRef.getReference("/users/${friend}/notifications")
                                             .push()
-                                            .setValue("${user.username} has closed his/her account.")
+                                            .setValue("{${user.username}} has closed his/her account.")
                                         databaseRef.getReference("/IndividualChats/${indChat.id}/deleted")
                                             .setValue(true)
                                     }
@@ -111,7 +111,7 @@ class SettingsPage: AppCompatActivity() {
                                                         .addOnSuccessListener {
                                                             databaseRef.getReference("/users/$mem/notifications")
                                                                 .push()
-                                                                .setValue("{${group.name}} is closed")
+                                                                .setValue("{${group.name}} is closed.")
                                                         }
                                                 }
                                                 databaseRef.getReference("/GroupChats/${group.groupId}/deleted")
@@ -127,7 +127,7 @@ class SettingsPage: AppCompatActivity() {
                                                     .addOnSuccessListener {
                                                         databaseRef.getReference("/users/$mem/notifications")
                                                             .push()
-                                                            .setValue("{${group.name}} is closed")
+                                                            .setValue("{${group.name}} is closed.")
                                                     }
                                             }
                                             databaseRef.getReference("/GroupChats/${group.groupId}/deleted")
@@ -143,7 +143,6 @@ class SettingsPage: AppCompatActivity() {
                     }
                 }
             }
-            showToast(FirebaseAuth.getInstance().uid.toString())
             FirebaseDatabase.getInstance().getReference("/users/${user.userId}/active").removeValue()
             FirebaseAuth.getInstance().currentUser?.delete()
                 ?.addOnCompleteListener {

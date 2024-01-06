@@ -45,7 +45,7 @@
             android:parentActivityName=".MainPage" />
         <activity
             android:name=".FriendProfilePage"
-            android:exported="true" />
+            android:exported="false" />
         <activity
             android:name=".NonFriendProfilePage"
             android:exported="false" />
@@ -55,7 +55,7 @@
             android:parentActivityName=".MainPage" />
         <activity
             android:name=".MainPage"
-            android:exported="true" />
+            android:exported="false" />
         <activity
             android:name=".NewFriendsPage"
             android:exported="false"

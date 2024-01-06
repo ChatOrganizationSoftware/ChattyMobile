@@ -222,7 +222,6 @@ class GroupUpdatePage : AppCompatActivity() {
                 if(members.keys.size != 0) {
                     val time = Timestamp.now()
                     for (member in members.keys) {
-                        showToast(member)
                         FirebaseDatabase.getInstance()
                             .getReference("/users/${member}/chats/${group.groupId}/id")
                             .setValue(group.groupId)

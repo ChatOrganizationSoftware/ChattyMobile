@@ -47,11 +47,22 @@ class FriendChatPage : AppCompatActivity() {
 
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
-        showToast("CHAT")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_chat_page)
 
         val chatId = intent.getStringExtra("CHAT_ID")!!
+
+        databaseRef.getReference("/users/$uid/chats/$chatId/read")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.exists() && snapshot.getValue(Boolean::class.java) == false)
+                        snapshot.ref.setValue(true)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -129,10 +140,10 @@ class FriendChatPage : AppCompatActivity() {
             enteredMessage.clearFocus() // Clear focus from EditText
             val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
-            val intent = Intent(this, FriendProfilePage::class.java)
+            val intent = Intent(this@FriendChatPage, FriendProfilePage::class.java)
             intent.putExtra(USER_KEY, friend!!.userId)
             intent.putExtra("CHAT_ID", chatId)
-            startActivity(intent)
+            startActivity(intent, null)
         }
 
         // Send message icon
@@ -143,8 +154,10 @@ class FriendChatPage : AppCompatActivity() {
                 val message = IndividualMessage( ref.key!!, text, null, uid!!)
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now().seconds
+                    databaseRef.getReference("/users/${friend?.userId}/chats/${chat!!.id}/read").setValue(false)
                     databaseRef.getReference("/users/${chat!!.user1}/chats/${chat!!.id}/time").setValue(time)
                     databaseRef.getReference("/users/${chat!!.user2}/chats/${chat!!.id}/time").setValue(time)
+
                     enteredMessage.setText("")
                 }
             }
