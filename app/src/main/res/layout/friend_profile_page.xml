@@ -58,12 +58,16 @@
 
             <TextView
                 android:id="@+id/aboutField"
-                android:layout_width="289dp"
-                android:layout_height="145dp"
-                android:layout_marginStart="10dp"
-                android:maxLines="3"
-                android:textSize="30sp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_marginTop="7dp"
+                android:layout_marginEnd="5dp"
+                android:maxLength="150"
+                android:maxLines="5"
+                android:textSize="20sp"
                 android:textStyle="italic"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@+id/textView8"
                 app:layout_constraintTop_toTopOf="@+id/textView8" />
 
@@ -71,7 +75,7 @@
                 android:id="@+id/textView8"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="20dp"
                 android:layout_marginTop="32dp"
                 android:text="About:"
                 android:textSize="30sp"
@@ -103,13 +107,13 @@
                 app:layout_constraintTop_toTopOf="@+id/textView12" />
 
             <Button
-                android:id="@+id/sendFriendshipRequestButton"
+                android:id="@+id/deleteChat"
                 android:layout_width="150dp"
                 android:layout_height="50dp"
                 android:layout_marginTop="30dp"
                 android:layout_marginBottom="20dp"
                 android:backgroundTint="#781911"
-                android:text="Remove Friend"
+                android:text="Delete Chat"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@+id/blockButton"
                 app:layout_constraintHorizontal_bias="0.5"
@@ -123,10 +127,10 @@
                 android:layout_height="50dp"
                 android:backgroundTint="#ab1f13"
                 android:text="Block"
-                app:layout_constraintBottom_toBottomOf="@+id/sendFriendshipRequestButton"
+                app:layout_constraintBottom_toBottomOf="@+id/deleteChat"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.5"
-                app:layout_constraintStart_toEndOf="@+id/sendFriendshipRequestButton" />
+                app:layout_constraintStart_toEndOf="@+id/deleteChat" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>

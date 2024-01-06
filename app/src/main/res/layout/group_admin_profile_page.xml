@@ -17,7 +17,8 @@
         tools:layout_editor_absoluteX="1dp" />
 
     <ScrollView
-        android:layout_width="0dp"
+        android:id="@+id/scrollView3"
+        android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -25,12 +26,12 @@
         app:layout_constraintTop_toBottomOf="@+id/toolbar2">
 
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/constraintLayout6"
+            android:id="@+id/constraintLayout5"
             android:layout_width="match_parent"
-            android:layout_height="0dp">
+            android:layout_height="wrap_content">
 
             <de.hdodenhof.circleimageview.CircleImageView
-                android:id="@+id/nonfriend_profile_photo"
+                android:id="@+id/friend_profile_photo"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
                 android:layout_marginTop="40dp"
@@ -53,69 +54,90 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.5"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/nonfriend_profile_photo" />
+                app:layout_constraintTop_toBottomOf="@+id/friend_profile_photo" />
 
             <TextView
                 android:id="@+id/aboutField"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="5dp"
-                android:layout_marginTop="7dp"
                 android:layout_marginEnd="5dp"
                 android:maxLength="150"
                 android:maxLines="5"
                 android:textSize="20sp"
                 android:textStyle="italic"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@+id/textView8"
-                app:layout_constraintTop_toTopOf="@+id/textView8" />
+                app:layout_constraintStart_toStartOf="@+id/textView8"
+                app:layout_constraintTop_toBottomOf="@+id/textView8" />
 
             <TextView
                 android:id="@+id/textView8"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
-                android:layout_marginTop="84dp"
-                android:text="About:"
+                android:layout_marginTop="32dp"
+                android:text="About"
                 android:textSize="30sp"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/nameField" />
 
             <TextView
-                android:id="@+id/textView12"
+                android:id="@+id/textView11"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
-                android:layout_marginTop="80dp"
-                android:text="Visibility: "
+                android:layout_marginTop="50dp"
+                android:text="Members"
+                android:textSize="30sp"
+                android:textStyle="bold"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/adminView" />
+
+            <TextView
+                android:id="@+id/textView14"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="50dp"
+                android:text="Admin"
                 android:textSize="30sp"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/aboutField" />
 
-            <TextView
-                android:id="@+id/visibilityText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:textSize="30sp"
-                android:textStyle="italic"
-                app:layout_constraintBottom_toBottomOf="@+id/textView12"
-                app:layout_constraintStart_toEndOf="@+id/textView12"
-                app:layout_constraintTop_toTopOf="@+id/textView12" />
-
             <Button
-                android:id="@+id/unblockButton"
-                android:layout_width="120dp"
+                android:id="@+id/closeGroupButton"
+                android:layout_width="150dp"
                 android:layout_height="50dp"
-                android:layout_marginTop="60dp"
-                android:backgroundTint="#ab1f13"
-                android:text="Unblock"
+                android:layout_marginTop="30dp"
+                android:layout_marginBottom="20dp"
+                android:backgroundTint="#781911"
+                android:text="Close Group"
+                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.5"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/textView12" />
+                app:layout_constraintTop_toBottomOf="@+id/membersRecyclerview" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/membersRecyclerview"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="20dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="@+id/textView11"
+                app:layout_constraintTop_toBottomOf="@+id/textView11" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/adminView"
+                android:layout_width="0dp"
+                android:layout_height="65dp"
+                android:layout_marginEnd="20dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="@+id/textView14"
+                app:layout_constraintTop_toBottomOf="@+id/textView14" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>

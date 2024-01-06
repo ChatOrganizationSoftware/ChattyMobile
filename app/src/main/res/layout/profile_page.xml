@@ -44,6 +44,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="30dp"
+            android:maxLength="20"
+            android:maxLines="1"
             android:text=""
             android:textSize="35sp"
             android:textStyle="bold"
@@ -54,12 +56,16 @@
 
         <TextView
             android:id="@+id/aboutField"
-            android:layout_width="289dp"
-            android:layout_height="145dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
-            android:maxLines="3"
-            android:textSize="30sp"
+            android:layout_marginTop="7dp"
+            android:layout_marginEnd="10dp"
+            android:maxLength="150"
+            android:maxLines="6"
+            android:textSize="20sp"
             android:textStyle="italic"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/textView8"
             app:layout_constraintTop_toTopOf="@+id/textView8" />
 

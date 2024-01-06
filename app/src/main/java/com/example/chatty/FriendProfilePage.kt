@@ -4,9 +4,11 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -18,12 +20,34 @@ class FriendProfilePage : AppCompatActivity() {
     private lateinit var nameField: TextView
     private lateinit var aboutField: TextView
     private lateinit var visibility: TextView
+    private lateinit var blockButton: Button
+    private lateinit var removeChatButton: Button
+    private var currentUser: String? = null
+    private var chatId: String? = null
+    private var user: User? = null
+    private var databaseRef = FirebaseDatabase.getInstance()
+    private var uid = FirebaseAuth.getInstance().uid
+    private var deleted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_profile_page)
 
-        val user = intent.getParcelableExtra<User>(FriendChatPage.USER_KEY)
+        val userId = intent.getStringExtra(FriendChatPage.USER_KEY)
+        chatId = intent.getStringExtra("CHAT_ID")
+
+        databaseRef.getReference("/IndividualChats/$chatId")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.child("deleted").exists() && !deleted){
+                        finish()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)
@@ -33,28 +57,80 @@ class FriendProfilePage : AppCompatActivity() {
         nameField = findViewById(R.id.nameField)
         aboutField = findViewById(R.id.aboutField)
         visibility = findViewById(R.id.visibilityText)
+        blockButton = findViewById(R.id.blockButton)
+        removeChatButton = findViewById(R.id.deleteChat)
 
-        // Get the information about the user from the firebase
-        val database = FirebaseDatabase.getInstance().getReference("users/${user?.userId}")
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                // Parse the user data from snapshot and update the UI
-                nameField.text = snapshot.child("username").getValue(String::class.java)
-                aboutField.text = snapshot.child("about").getValue(String::class.java)
-                visibility.text = snapshot.child("visibility").getValue(String::class.java)
-
-                val image = snapshot.child("profilePhoto").getValue(String::class.java)
-                if(image != "") {
-                    Picasso.get().load(image).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
+        databaseRef.getReference("/users/${uid}/username")
+            .addListenerForSingleValueEvent(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    currentUser = snapshot.getValue(String::class.java)
                 }
 
-            }
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
 
-            override fun onCancelled(error: DatabaseError) {
-                // Handle any errors that occur while fetching data
+        databaseRef.getReference("/users/${userId}")
+            .addListenerForSingleValueEvent(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    user = snapshot.getValue(User::class.java)
+                    nameField.text = user!!.username
+                    aboutField.text = user!!.about
+                    visibility.text = user!!.visibility
+                    if (user!!.profilePhoto != "") {
+                        Picasso.get().load(user!!.profilePhoto)
+                            .into(findViewById<CircleImageView>(R.id.friend_profile_photo))
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
+
+        removeChatButton.setOnClickListener {
+            deleted = true
+
+            if (user != null) {
+                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("{$currentUser} has removed your chat.")
+
+                databaseRef.getReference("/IndividualChats/$chatId/deleted").setValue(true)
+                    .addOnCompleteListener {
+                        databaseRef.getReference("/users/${uid}/chats/${chatId}")
+                            .removeValue().addOnCompleteListener {
+                                finish()
+                            }
+                    }
             }
-        })
+        }
+
+        blockButton.setOnClickListener {
+            deleted = true
+            if (user != null) {
+
+                databaseRef.getReference("/users/${uid}/block/${user!!.userId}").setValue(user!!.userId)
+                databaseRef.getReference("/users/${user!!.userId}/blockedBy/${uid}").setValue(uid)
+
+                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}").removeValue()
+                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("{$currentUser} has blocked you.")
+                databaseRef.getReference("/IndividualChats/$chatId/deleted").setValue(true)
+                    .addOnCompleteListener {
+                        databaseRef.getReference("/users/${uid}/chats/${chatId}")
+                            .removeValue().addOnCompleteListener {
+                                finish()
+                            }
+                    }
+
+            }
+        }
     }
+
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.friend_profile_menu, menu)

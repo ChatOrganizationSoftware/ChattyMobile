@@ -1,9 +1,13 @@
 package com.example.chatty
 
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -13,12 +17,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
@@ -30,17 +33,33 @@ class GroupChatPage : AppCompatActivity() {
     private lateinit var recyclerChatLog: RecyclerView
     private lateinit var friendChatProfilePhoto: CircleImageView
     private lateinit var sendIcon: ImageView
+    private lateinit var sendImageIcon: ImageView
     private lateinit var chatName: TextView
-    private lateinit var group: Group
-    private lateinit var memberTable: HashMap<String, User>
-    private lateinit var databaseRef: DatabaseReference
+    private var group = Group()
+    private lateinit var groupId: String
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
+    private var selectedPhoto: Uri? = null
+    private var databaseRef = FirebaseDatabase.getInstance()
+    private var uid = FirebaseAuth.getInstance().uid
+    private var listened = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.group_chat_page)
 
-        val groupId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
+        groupId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
+
+        databaseRef.getReference("/users/$uid/chats/$groupId/read")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.exists() && snapshot.getValue(Boolean::class.java) == false)
+                        snapshot.ref.setValue(true)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -48,6 +67,7 @@ class GroupChatPage : AppCompatActivity() {
         val actionBar = supportActionBar
         actionBar?.setDisplayShowTitleEnabled(false)
 
+        sendImageIcon = findViewById(R.id.sendImageIcon)
         sendIcon = findViewById(R.id.messageSendIcon)
         enteredMessage = findViewById(R.id.enteredMessage)
         friendChatProfilePhoto = findViewById(R.id.friendChatProfilePhoto)
@@ -62,15 +82,40 @@ class GroupChatPage : AppCompatActivity() {
         recyclerChatLog.adapter = groupAdapter
 
         // Gets the group information from the firebase
-        FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}").addValueEventListener(object : ValueEventListener {
+        databaseRef.getReference("/GroupChats/${groupId}")
+            .addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                if(snapshot.child("deleted").exists())
+                    finish()
                 // Parse the user data from snapshot and update the UI
                 group = snapshot.getValue(Group::class.java)!!
-                chatName.text = group.name
-                val image = group.groupPhoto
-                if(image != "") {
-                    Picasso.get().load(image).into(friendChatProfilePhoto)
+
+                if(!group.members[uid]!!)
+                    finish()
+                var i = 0
+
+                for(mem in group.members.keys){
+                    databaseRef.getReference("/users/$mem/username")
+                        .addListenerForSingleValueEvent(object : ValueEventListener{
+                            override fun onDataChange(snapshot: DataSnapshot) {
+                                group.currentMembers.put(mem, snapshot.getValue(String::class.java)!!)
+                                i++
+                                if(i == group.members.keys.size){
+                                    if(!listened) {
+                                        listened = true
+                                        listenMessages()
+                                    }
+                                }
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                TODO("Not yet implemented")
+                            }
+                    })
                 }
+                if(group.groupPhoto != "")
+                    Picasso.get().load(group.groupPhoto).into(friendChatProfilePhoto)
+                chatName.text = group.name
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -78,92 +123,116 @@ class GroupChatPage : AppCompatActivity() {
             }
         })
 
-        databaseRef = FirebaseDatabase.getInstance().getReference("/GroupChats/${groupId}/Messages")
-
-        memberTable = HashMap<String, User>()
-        listenMessages()
-
         friendChatProfilePhoto.setOnClickListener {
-            val intent = Intent(this, GroupProfilePage::class.java)
-            intent.putExtra("Group", group)
-            val bundle = Bundle()
-            bundle.putSerializable("memberTable", memberTable)
-            intent.putExtra("Members", bundle)
-            startActivity(intent)
+            if (group.adminId == uid) {
+                enteredMessage.clearFocus() // Clear focus from EditText
+                val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
+                val intent = Intent(this, GroupAdminProfilePage::class.java)
+                intent.putExtra("GROUP_ID", group.groupId)
+                startActivity(intent)
+            }
+            else {
+                enteredMessage.setText("")
+                enteredMessage.clearFocus() // Clear focus from EditText
+                val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
+
+                val intent = Intent(this, GroupProfilePage::class.java)
+                intent.putExtra("GROUP_ID", group.groupId)
+                startActivity(intent)
+            }
         }
 
         sendIcon.setOnClickListener{
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
-                val ref = databaseRef.push()
+                val ref = databaseRef.getReference("/GroupChats/${groupId}/Messages").push()
 
-                val time = Timestamp.now()
-                val message = IndividualMessage( ref.key!!, text, FirebaseAuth.getInstance().uid!!, time)
+                val message = IndividualMessage( ref.key!!, text, null, uid!!)
                 ref.setValue(message).addOnSuccessListener {
-                    for(member in group.members){
-                        FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
+                    val time = Timestamp.now().seconds
+                    for(member in group.members.keys){
+                        databaseRef.getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
+                        databaseRef.getReference("/users/${member}/chats/${group.groupId}/read").setValue(false)
                     }
                     enteredMessage.setText("")
                 }
             }
         }
+
+        sendImageIcon.setOnClickListener {
+            enteredMessage.setText("")
+            enteredMessage.clearFocus() // Clear focus from EditText
+            val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
+
+            val intent = Intent(Intent.ACTION_PICK)
+            intent.type = "image/*"
+            startActivityForResult(intent, 0)
+        }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
 
+        if(requestCode==0 && resultCode== Activity.RESULT_OK && data!=null){
+            selectedPhoto = data.data
+
+            val intent = Intent(this, DisplayImageGroupPage::class.java)
+            intent.putExtra("PHOTO_SELECTED", selectedPhoto.toString())
+            intent.putExtra("GROUP", group)
+            startActivity(intent)
+        }
+    }
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
-
     // Gets the all messages in the group rom the firebase
     private fun listenMessages(){
-        databaseRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val messagesList = mutableListOf<String>()
-                val sendersList = mutableListOf<String>()
+        databaseRef.getReference("/GroupChats/${groupId}/Messages")
+            .addChildEventListener(object: ChildEventListener{
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val message = snapshot.getValue(IndividualMessage::class.java)
 
-                var size = 0
-                for (snapshot in dataSnapshot.children) {
-                    snapshot.child("message").getValue<String>()?.let { messagesList.add(it) }
-                    snapshot.child("senderId").getValue<String>()?.let { sendersList.add(it) }
-                    size += 1
-                }
-
-                var count = 0
-                for(member in group.members){
-                    FirebaseDatabase.getInstance().getReference("/users/${member}")
-                        .addValueEventListener(object : ValueEventListener {
-                            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                                val user = dataSnapshot.getValue(User::class.java) as User
-                                memberTable.put(user.userId, user)
-                                count += 1
-                                if(count==group.members.size){
-                                    for(i in 0..<size){
-                                        if (FirebaseAuth.getInstance().uid == sendersList[(i)])
-                                            groupAdapter.add(FriendChatToItem(messagesList[i]))
-                                        else {
-                                            val sender = memberTable[sendersList[i]]
-                                            groupAdapter.add( GroupChatFromItem( messagesList[i], sender!!.username, sender.profilePhoto ))
-                                        }
-                                        recyclerChatLog.post {
-                                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                                        }
-
-                                    }
-                                }
-                            }
-
-                            override fun onCancelled(databaseError: DatabaseError) {
-                                // Handle errors if any
-                                println("Error: ${databaseError.message}")
-                            }
-                        })
+                if(message == null)
+                    showToast("NULL")
+                else {
+                    if (message.photoURI == null) {
+                        if (uid == message.senderId) {
+                            groupAdapter.add(FriendChatToItem(message.message!!))
+                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                        } else {
+                            val sender = group.currentMembers[message.senderId]
+                            groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
+                        }
+                    } else {
+                        if (uid == message.senderId) {
+                            groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
+                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                        } else {
+                            val sender = group.currentMembers[message.senderId]
+                            groupAdapter.add(GroupChatFromPhoto(sender!!, message.photoURI!!))
+                        }
+                    }
                 }
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
-                // Handle errors if any
-                println("Error: ${databaseError.message}")
+            override fun onCancelled(error: DatabaseError) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                TODO("Not yet implemented")
             }
         })
     }
@@ -185,16 +254,24 @@ class GroupChatPage : AppCompatActivity() {
 }
 
 // Class to display the messages coming from other users
-class GroupChatFromItem(val text: String, val username:String, val photoURI:String): Item<GroupieViewHolder>(){
+class GroupChatFromItem(val text: String, val username:String): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
         viewHolder.itemView.findViewById<TextView>(R.id.textViewFromRow).text = text
         viewHolder.itemView.findViewById<TextView>(R.id.chat_row_username).text = username
-        if(photoURI!=""){
-            Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.group_chat_row_image))
-        }
     }
 
     override fun getLayout(): Int {
         return R.layout.group_chat_from_row
+    }
+}
+
+class GroupChatFromPhoto(val username: String, val photoURI: String): Item<GroupieViewHolder>(){
+    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
+        viewHolder.itemView.findViewById<TextView>(R.id.textView13at_row_username).text = username
+        Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<ImageView>(R.id.sentPhoto))
+    }
+
+    override fun getLayout(): Int {
+        return R.layout.group_chat_from_photo
     }
 }
