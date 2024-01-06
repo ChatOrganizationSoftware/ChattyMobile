@@ -68,7 +68,7 @@ class DisplayImageGroupPage : AppCompatActivity() {
         val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${group?.groupId}/Messages").push()
         val message = IndividualMessage( ref.key!!, null, imageUri, FirebaseAuth.getInstance().uid!!,)
         ref.setValue(message).addOnSuccessListener {
-            val time = Timestamp.now()
+            val time = Timestamp.now().seconds
             for(member in group?.members!!)
                 FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group?.groupId}/time").setValue(time)
             finish()

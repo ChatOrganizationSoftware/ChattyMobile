@@ -6,9 +6,9 @@ import kotlinx.parcelize.Parcelize
 // Class to store group informations
 @Parcelize
 class Group(var groupId: String, var name: String, var groupPhoto:String = "",
-            var about: String = "Hello there", var members: HashMap<String ,String> = hashMapOf<String, String>()
+            var about: String = "Hello there", var members: HashMap<String ,Boolean> = hashMapOf<String, Boolean>()
 ): Parcelable {
     var adminId:String? = null
-    var prevMembers: HashMap<String, String>? = null
+    var currentMembers = HashMap<String, String>()
     constructor() : this("", "", "", "", hashMapOf())
 }

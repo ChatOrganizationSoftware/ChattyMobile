@@ -9,8 +9,6 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
-import android.widget.RadioButton
-import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -22,7 +20,6 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
 import com.google.firebase.storage.FirebaseStorage
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
@@ -49,9 +46,13 @@ class GroupUpdatePage : AppCompatActivity() {
     private lateinit var addMembers: RecyclerView
     private val groupAdapter = GroupAdapter<GroupieViewHolder>()
 
-    private var members = hashMapOf<String, String>()
+    private var members = hashMapOf<String, Boolean>()
 
     private val databaseRef = FirebaseDatabase.getInstance()
+
+    private var clicked = false
+
+    private var updates = hashMapOf<String, Any>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,7 +64,6 @@ class GroupUpdatePage : AppCompatActivity() {
             .addListenerForSingleValueEvent(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
                     group = snapshot.getValue(Group::class.java)!!
-                    members = group.members
                     oldImage = group.groupPhoto
 
                     if(oldImage != "")
@@ -101,13 +101,26 @@ class GroupUpdatePage : AppCompatActivity() {
         }
 
         cancelButton.setOnClickListener{
-            val intent = Intent(this, GroupAdminProfilePage::class.java)
-            intent.putExtra("GROUP_ID", group.groupId)
-            startActivity(intent)
-            finish()
+            if(!clicked){
+                //val intent = Intent(this, GroupAdminProfilePage::class.java)
+                //intent.putExtra("GROUP_ID", group.groupId)
+                //startActivity(intent)
+                finish()
+            }
         }
 
         confirmButton.setOnClickListener{
+            if(!clicked){
+                updates["name"] = nameEditText.text.toString().trim()
+                updates["about"] = aboutEditText.text.toString().trim()
+
+                if(updates["name"].toString().isEmpty())
+                    showToast("You can't leave group name empty")
+                else {
+                    clicked = true
+                    saveNewImage()
+                }
+            }
             saveNewImage()
         }
     }
@@ -116,10 +129,11 @@ class GroupUpdatePage : AppCompatActivity() {
         val ref = FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/friends")
         ref.addListenerForSingleValueEvent(object: ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot){
+                groupAdapter.clear()
                 snapshot.children.forEach {
                     val userId = it.key
 
-                    if (!group.members.containsKey(userId)) {
+                    if (!group.members.containsKey(userId) || !group.members[userId]!!) {
                         FirebaseDatabase.getInstance().getReference("/users/${userId}")
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -141,7 +155,7 @@ class GroupUpdatePage : AppCompatActivity() {
                     val userItem = item as GroupUserItem
                     if(!userItem.selected){
                         userItem.selected = true
-                        members.put(userItem.user.userId, userItem.user.username)
+                        members.put(userItem.user.userId, true)
                         view.findViewById<ConstraintLayout>(R.id.chat_row_background).setBackgroundColor(
                             Color.parseColor("#504F4F"))
                         view.findViewById<TextView>(R.id.username_newfriend_row).setTextColor(Color.WHITE)
@@ -194,28 +208,38 @@ class GroupUpdatePage : AppCompatActivity() {
     }
 
     private fun saveUpdates(profileImageUri: String){
-        val ref = FirebaseDatabase.getInstance().getReference("/GroupChats/${group.groupId}")
 
-        var updates = HashMap<String, Any>()
-        updates["name"] = nameEditText.text.toString()
-        updates["about"] = aboutEditText.text.toString()
-        updates["members"] = group.members.putAll(members)
+        group.members.putAll(members)
          if(profileImageUri!="") {
-            updates["groupPhoto"] = profileImageUri
+            databaseRef.getReference("/GroupChats/${group.groupId}/groupPhoto").setValue(profileImageUri)
         }
 
-        ref.updateChildren(updates).addOnCompleteListener {
-            val time = Timestamp.now()
-            for(member in members.keys){
-                FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group.groupId}/id").setValue(group.groupId)
-                FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
-                FirebaseDatabase.getInstance().getReference("/users/${member}/chats/${group.groupId}/group").setValue(true)
+
+        databaseRef.getReference("/GroupChats/${group.groupId}/name").setValue(updates["name"])
+        databaseRef.getReference("/GroupChats/${group.groupId}/about").setValue(updates["about"])
+        databaseRef.getReference("/GroupChats/${group.groupId}/members").setValue(group.members)
+            .addOnCompleteListener {
+                if(members.keys.size != 0) {
+                    val time = Timestamp.now()
+                    for (member in members.keys) {
+                        showToast(member)
+                        FirebaseDatabase.getInstance()
+                            .getReference("/users/${member}/chats/${group.groupId}/id")
+                            .setValue(group.groupId)
+                        FirebaseDatabase.getInstance()
+                            .getReference("/users/${member}/chats/${group.groupId}/time")
+                            .setValue(time)
+                        FirebaseDatabase.getInstance()
+                            .getReference("/users/${member}/chats/${group.groupId}/group")
+                            .setValue(true)
+
+                        //val intent = Intent(this, GroupAdminProfilePage::class.java)
+                        //intent.putExtra("GROUP_ID", group.groupId)
+                        //startActivity(intent)
+                    }
+                }
+                finish()
             }
-            val intent = Intent(this, GroupAdminProfilePage::class.java)
-            intent.putExtra("GROUP_ID", group.groupId)
-            startActivity(intent)
-            finish()
-        }
     }
 
     private fun showToast(message: String) {

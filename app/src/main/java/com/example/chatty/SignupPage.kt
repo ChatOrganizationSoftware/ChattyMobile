@@ -87,7 +87,6 @@ class SignupPage : AppCompatActivity() {
         // Click listener for Continue Button
         signUpButton.setOnClickListener {
             if (!clicked) {
-                clicked = true
                 val name = nameField.text.toString().trim()
                 val email = emailField.text.toString().trim()
                 val password = passwordField.text.toString().trim()
@@ -97,6 +96,7 @@ class SignupPage : AppCompatActivity() {
                 else if (password != confirmPass)
                     showToast("Password and Confirm Password should match")
                 else {
+                    clicked = true
                     register(email, password)
                 }
             }

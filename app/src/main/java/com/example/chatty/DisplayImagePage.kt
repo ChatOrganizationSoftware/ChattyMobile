@@ -1,6 +1,5 @@
 package com.example.chatty
 
-import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -72,7 +71,7 @@ class DisplayImagePage : AppCompatActivity() {
         val ref = FirebaseDatabase.getInstance().getReference("/IndividualChats/${chatId}/Messages").push()
         val message = IndividualMessage( ref.key!!, null, imageUri, FirebaseAuth.getInstance().uid!!,)
         ref.setValue(message).addOnCompleteListener {
-            val time = Timestamp.now()
+            val time = Timestamp.now().seconds
             FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/chats/${chatId}/time").setValue(time)
             FirebaseDatabase.getInstance().getReference("/users/${friendId}/chats/${chatId}/time").setValue(time)
             finish()

@@ -11,13 +11,10 @@ import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
@@ -28,14 +25,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import java.util.UUID
 
 class MainPage : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var createGroupIcon: ImageView
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
-    private lateinit var inputChats: MutableList<String>
     private var databaseRef = FirebaseDatabase.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,7 +61,7 @@ class MainPage : AppCompatActivity() {
                 val chat = chatItem.chatId
 
                 val intent = Intent(view.context, FriendChatPage::class.java)
-                intent.putExtra(NewFriendsPage.USER_KEY, chat)
+                intent.putExtra("CHAT_ID", chat)
                 startActivity(intent)
             } else {
                 val groupItem = item as GroupItem
@@ -85,14 +80,13 @@ class MainPage : AppCompatActivity() {
     }
 
     private fun displayChats(){
-        val ref = databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
-        ref.addValueEventListener(object: ValueEventListener{
+        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
+            .addValueEventListener(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 val inputChats = mutableListOf<Chat>()
                 groupAdapter.clear()
                 for(data in snapshot.children){
-                    val chat = Chat(data.child("id").getValue(String::class.java)!!, data.child("group").exists())
-                    chat.time = data.child("time/seconds").getValue(Long::class.java)
+                    val chat = Chat(data.child("id").getValue(String::class.java)!!, data.child("group").exists(), data.child("time").getValue(Long::class.java)!!)
                     inputChats.add(chat)
                 }
 
@@ -163,6 +157,10 @@ class MainPage : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item?.itemId){
+            R.id.main_notifications -> {
+                val intent = Intent(this, NotificationsPage::class.java)
+                startActivity(intent)
+            }
             R.id.main_new_friends ->{
                 val intent = Intent(this, NewFriendsPage::class.java)
                 startActivity(intent)

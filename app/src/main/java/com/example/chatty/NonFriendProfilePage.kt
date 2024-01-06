@@ -27,9 +27,7 @@ class NonFriendProfilePage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.nonfriend_profile_page)
 
-        val userId = intent.getParcelableExtra<User>(FriendChatPage.USER_KEY)
-
-
+        val userId = intent.getStringExtra(FriendChatPage.USER_KEY)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)
@@ -43,8 +41,8 @@ class NonFriendProfilePage : AppCompatActivity() {
         unblockButton = findViewById(R.id.unblockButton)
 
         // Get the user information from the firebase
-        val database = FirebaseDatabase.getInstance().getReference("users/${userId}")
-        database.addListenerForSingleValueEvent(object : ValueEventListener {
+        FirebaseDatabase.getInstance().getReference("/users/${userId}")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 // Parse the user data from snapshot and update the UI
                 nameField.text = snapshot.child("username").getValue(String::class.java)
@@ -80,13 +78,7 @@ class NonFriendProfilePage : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
-                val caller = intent.getStringExtra("callerActivity")
-                if (caller == "NewFriendsPage") {
-                    val launchIntent = Intent(this, NewFriendsPage::class.java)
-                    startActivity(launchIntent)
                     finish()
-                }
-
             }
         }
         return super.onOptionsItemSelected(item)

@@ -20,10 +20,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
@@ -76,18 +74,35 @@ class GroupChatPage : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if(snapshot.child("deleted").exists())
                     finish()
-
                 // Parse the user data from snapshot and update the UI
                 group = snapshot.getValue(Group::class.java)!!
-                group.prevMembers?.let { group.members.putAll(it) }
+
+                if(!group.members[uid]!!)
+                    finish()
+                var i = 0
+
+                for(mem in group.members.keys){
+                    databaseRef.getReference("/users/$mem/username")
+                        .addListenerForSingleValueEvent(object : ValueEventListener{
+                            override fun onDataChange(snapshot: DataSnapshot) {
+                                group.currentMembers.put(mem, snapshot.getValue(String::class.java)!!)
+                                i++
+                                if(i == group.members.keys.size){
+                                    if(!listened) {
+                                        listened = true
+                                        listenMessages()
+                                    }
+                                }
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                TODO("Not yet implemented")
+                            }
+                    })
+                }
                 if(group.groupPhoto != "")
                     Picasso.get().load(group.groupPhoto).into(friendChatProfilePhoto)
                 chatName.text = group.name
-
-                if(!listened) {
-                    listened = true
-                    listenMessages()
-                }
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -103,7 +118,6 @@ class GroupChatPage : AppCompatActivity() {
                 val intent = Intent(this, GroupAdminProfilePage::class.java)
                 intent.putExtra("GROUP_ID", group.groupId)
                 startActivity(intent)
-                finish()
             }
             else {
                 enteredMessage.setText("")
@@ -124,7 +138,7 @@ class GroupChatPage : AppCompatActivity() {
 
                 val message = IndividualMessage( ref.key!!, text, null, uid!!)
                 ref.setValue(message).addOnSuccessListener {
-                    val time = Timestamp.now()
+                    val time = Timestamp.now().seconds
                     for(member in group.members.keys){
                         databaseRef.getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
                     }
@@ -176,7 +190,7 @@ class GroupChatPage : AppCompatActivity() {
                             groupAdapter.add(FriendChatToItem(message.message!!))
                             recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                         } else {
-                            val sender = group.members[message.senderId]
+                            val sender = group.currentMembers[message.senderId]
                             groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
                         }
                     } else {
@@ -184,7 +198,7 @@ class GroupChatPage : AppCompatActivity() {
                             groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
                             recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                         } else {
-                            val sender = group.members[message.senderId]
+                            val sender = group.currentMembers[message.senderId]
                             groupAdapter.add(GroupChatFromPhoto(sender!!, message.photoURI!!))
                         }
                     }

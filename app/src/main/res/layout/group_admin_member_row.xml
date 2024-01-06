@@ -12,6 +12,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="5dp"
+        android:layout_marginEnd="60dp"
         android:maxLength="20"
         android:text="TextView"
         android:textSize="22sp"
@@ -45,4 +46,17 @@
         app:layout_constraintStart_toStartOf="@+id/username_newfriend_row"
         app:layout_constraintTop_toBottomOf="@+id/username_newfriend_row"
         app:layout_constraintVertical_bias="0.5" />
+
+    <ImageView
+        android:id="@+id/removeMember"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/username_newfriend_row"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.5"
+        app:srcCompat="@drawable/x_solid__1_" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -8,7 +8,6 @@ import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
-import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
@@ -30,8 +29,6 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.getValue
-import com.google.protobuf.Value
 
 
 class FriendChatPage : AppCompatActivity() {
@@ -54,7 +51,7 @@ class FriendChatPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_chat_page)
 
-        val chatId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
+        val chatId = intent.getStringExtra("CHAT_ID")!!
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -91,8 +88,6 @@ class FriendChatPage : AppCompatActivity() {
         databaseRef.getReference("/IndividualChats/$chatId")
             .addListenerForSingleValueEvent(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if(snapshot.child("deleted").exists())
-                        finish()
 
                     chat = snapshot.getValue(IndividualChat::class.java)
 
@@ -147,7 +142,7 @@ class FriendChatPage : AppCompatActivity() {
                 val ref = databaseRef.getReference("/IndividualChats/${chatId}/Messages").push()
                 val message = IndividualMessage( ref.key!!, text, null, uid!!)
                 ref.setValue(message).addOnSuccessListener {
-                    val time = Timestamp.now()
+                    val time = Timestamp.now().seconds
                     databaseRef.getReference("/users/${chat!!.user1}/chats/${chat!!.id}/time").setValue(time)
                     databaseRef.getReference("/users/${chat!!.user2}/chats/${chat!!.id}/time").setValue(time)
                     enteredMessage.setText("")
