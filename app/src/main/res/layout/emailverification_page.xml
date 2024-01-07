@@ -1,47 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:padding="16dp">
 
-    <TextView
-        android:id="@+id/textView4"
+    <ImageView
+        android:id="@+id/tickIcon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Email Verification"
-        android:textSize="40dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.107" />
+        android:layout_centerInParent="true"
+        android:src="@android:drawable/ic_dialog_info" /> <!-- Replace with your tick icon -->
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="409dp"
-        android:layout_height="589dp"
-        tools:layout_editor_absoluteX="1dp"
-        tools:layout_editor_absoluteY="141dp">
+    <TextView
+        android:id="@+id/verificationMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/tickIcon"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:text="Email verification link has been sent. Please check your inbox."
+        android:textAlignment="center" />
 
-        <EditText
-            android:id="@+id/editTextTextEmailAddress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="textEmailAddress"
-            tools:layout_editor_absoluteX="73dp"
-            tools:layout_editor_absoluteY="242dp" />
+    <Button
+        android:id="@+id/returnLoginButtonFromEmailVerification"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/verificationMessage"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="32dp"
+        android:text="Go To Login"
+        android:onClick="returnToLogin"
+        />
 
-        <EditText
-            android:id="@+id/editTextText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="text"
-            android:text=""
-            tools:layout_editor_absoluteX="76dp"
-            tools:layout_editor_absoluteY="126dp" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</RelativeLayout>

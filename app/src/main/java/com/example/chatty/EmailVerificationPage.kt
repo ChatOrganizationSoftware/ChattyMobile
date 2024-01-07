@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -16,45 +17,19 @@ class EmailVerificationPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.emailverification_page)
 
-        auth = FirebaseAuth.getInstance()
 
-        val currentUser = auth.currentUser
-        currentUser?.let {
-            sendEmailForVerification(it)
+        // return to login page button
+        val returnLoginButton = findViewById<Button>(R.id.returnLoginButtonFromEmailVerification)
+        returnLoginButton.setOnClickListener {
+            val intent = Intent(this, LoginPage::class.java)
+            startActivity(intent)
         }
+
     }
 
-    fun sendEmailForVerification(user: FirebaseUser) {
-        user.sendEmailVerification().addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                showVerificationSuccessDialog()
-            } else {
-                showVerificationFailureDialog()
-            }
-        }
-    }
-
-    private fun showVerificationSuccessDialog() {
-        val alertDialog = AlertDialog.Builder(this)
-        alertDialog.setTitle("Verification Link Sent")
-            .setMessage("Link has successfully sent to your email. Please verify your email as soon as possible.")
-            .setPositiveButton("OK") { dialog, which ->
-                // You can add any additional actions after successful verification
-                // For example, navigate to another activity
-                val intent = Intent(this, AnotherActivity::class.java)
-                startActivity(intent)
-            }
-            .show()
-    }
-
-    private fun showVerificationFailureDialog() {
-        val alertDialog = AlertDialog.Builder(this)
-        alertDialog.setTitle("Error")
-            .setMessage("Something went wrong. Not able to send verification link to your email.")
-            .setPositiveButton("OK", DialogInterface.OnClickListener { dialog, which ->
 
 
-            })
-            .show()
-    }
+
+
+
 }
