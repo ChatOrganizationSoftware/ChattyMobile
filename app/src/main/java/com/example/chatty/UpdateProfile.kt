@@ -18,7 +18,6 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.getValue
 import com.google.firebase.storage.FirebaseStorage
 import com.squareup.picasso.Picasso
-import de.hdodenhof.circleimageview.CircleImageView
 import java.util.UUID
 
 class UpdateProfile: AppCompatActivity() {
@@ -41,6 +40,10 @@ class UpdateProfile: AppCompatActivity() {
 
     private lateinit var oldImage: String
     private var newImage: Uri? = null
+
+    private var clicked = false
+
+    private var updates = hashMapOf<String, Any>()
 
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,11 +108,27 @@ class UpdateProfile: AppCompatActivity() {
         }
 
         cancelButton.setOnClickListener{
-            finish()
+            if(!clicked)
+                finish()
         }
 
         confirmButton.setOnClickListener{
-            saveNewImage()
+            if(!clicked) {
+                updates["username"] = nameEditText.text.toString().trim()
+                updates["about"] = aboutEditText.text.toString().trim()
+                updates["visibility"] = visibility
+
+                if(updates["username"].toString().length > 20 )
+                    showToast("Your name can't be longer than 20 characters")
+                else if(updates["username"].toString().isEmpty())
+                    showToast("You can't leave your name empty")
+                else if(updates["about"].toString().length > 150)
+                    showToast("Your about field can't be longer than 150 characters")
+                else {
+                    clicked = true
+                    saveNewImage()
+                }
+            }
         }
     }
 
@@ -148,10 +167,6 @@ class UpdateProfile: AppCompatActivity() {
         val uid = FirebaseAuth.getInstance().uid
         val ref = FirebaseDatabase.getInstance().getReference("users/$uid")
 
-        var updates = HashMap<String, Any>()
-        updates["username"] = nameEditText.text.toString()
-        updates["about"] = aboutEditText.text.toString()
-        updates["visibility"] = visibility
         if(profileImageUri!="") {
             updates["profilePhoto"] = profileImageUri
         }

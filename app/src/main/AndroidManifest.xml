@@ -18,6 +18,28 @@
         android:theme="@style/Theme.Chatty"
         tools:targetApi="31">
         <activity
+            android:name=".NotificationsPage"
+            android:exported="false" />
+        <activity
+            android:name=".GroupUpdatePage"
+            android:exported="false" />
+        <activity
+            android:name=".GroupAdminProfilePage"
+            android:exported="false" />
+        <activity
+            android:name=".DisplayImageGroupPage"
+            android:exported="false" />
+        <activity
+            android:name=".DisplayImagePage"
+            android:exported="false" />
+        <activity
+            android:name=".GroupProfilePage"
+            android:exported="false" />
+        <activity
+            android:name=".GroupChatPage"
+            android:exported="false"
+            android:parentActivityName=".MainPage" />
+        <activity
             android:name=".CreateGroupPage"
             android:exported="false"
             android:parentActivityName=".MainPage" />
@@ -33,13 +55,7 @@
             android:parentActivityName=".MainPage" />
         <activity
             android:name=".MainPage"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
         <activity
             android:name=".NewFriendsPage"
             android:exported="false"
@@ -47,6 +63,11 @@
         <activity
             android:name=".LoginPage"
             android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
         <activity android:name=".SignupPage" />
         <activity android:name=".EmailVerificationPage" />
