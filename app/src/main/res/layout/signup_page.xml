@@ -8,23 +8,29 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent" >
+        android:layout_height="match_parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            tools:ignore="ExtraText">
 
             <TextView
                 android:id="@+id/textView2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="30dp"
+                android:layout_marginTop="8dp"
                 android:text="Create Account"
                 android:textColor="@color/white"
                 android:textSize="30sp"
                 android:textStyle="normal"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.5"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/selectPhotoButton" />
 
@@ -112,28 +118,29 @@
             <Button
                 android:id="@+id/signUpButton"
                 android:layout_width="190dp"
-                android:layout_height="60dp"
-                android:layout_marginTop="50dp"
+                android:layout_height="50dp"
+                android:layout_marginStart="110dp"
+                android:layout_marginTop="21dp"
+                android:layout_marginEnd="111dp"
                 android:backgroundTint="#424369"
                 android:text="Continue"
                 android:textSize="20sp"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.5"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/confirmPasswordField" />
+                app:layout_constraintTop_toBottomOf="@+id/kvkkCheckBox" />
 
             <Button
                 android:id="@+id/returnLoginButton"
                 android:layout_width="wrap_content"
                 android:layout_height="50dp"
-                android:layout_marginTop="25dp"
-                android:layout_marginBottom="20dp"
+                android:layout_marginStart="110dp"
+                android:layout_marginTop="11dp"
+                android:layout_marginEnd="112dp"
                 android:backgroundTint="#424369"
                 android:text="Return to Login"
                 android:textSize="20sp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.5"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/signUpButton" />
 
@@ -141,12 +148,12 @@
                 android:id="@+id/selectPhotoButton"
                 android:layout_width="150dp"
                 android:layout_height="150dp"
-                android:layout_marginTop="50dp"
+                android:layout_marginTop="28dp"
                 android:background="@drawable/circle_shape"
                 app:civ_border_color="#d1cfcf"
                 app:civ_border_width="2dp"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.5"
+                app:layout_constraintHorizontal_bias="0.498"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -160,6 +167,41 @@
                 app:layout_constraintEnd_toEndOf="@+id/selectPhotoButton"
                 app:layout_constraintStart_toStartOf="@+id/selectPhotoButton"
                 app:layout_constraintTop_toTopOf="@+id/selectPhotoButton" />
+
+            <CheckBox
+                android:id="@+id/kvkkCheckBox"
+                android:layout_width="310dp"
+                android:layout_height="63dp"
+                android:layout_marginStart="63dp"
+                android:layout_marginTop="15dp"
+                android:layout_marginEnd="38dp"
+                android:buttonTint="#FAF7F7"
+                android:text="   I have read and agree to the "
+                android:textColor="#FBFAFA"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/confirmPasswordField" />
+
+            <TextView
+                android:id="@+id/kvkkLink"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="User Agreement and Privacy Policy"
+                android:textAllCaps="false"
+                android:textColor="#FF5722"
+                android:textStyle="italic"
+                app:layout_constraintBottom_toBottomOf="@+id/kvkkCheckBox"
+                app:layout_constraintEnd_toEndOf="@+id/kvkkCheckBox"
+                app:layout_constraintHorizontal_bias="0.452"
+                app:layout_constraintStart_toStartOf="@+id/kvkkCheckBox"
+                app:layout_constraintTop_toTopOf="@+id/kvkkCheckBox"
+                app:layout_constraintVertical_bias="1.0" /> <!-- Link gibi görünmesi için -->
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginStart="4dp" />
+
+
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
 
