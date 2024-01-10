@@ -20,6 +20,16 @@ class DisplayImagePage : AppCompatActivity() {
     private var clicked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        val isDarkTheme = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
+            .getBoolean("DARK_THEME", false)
+
+        if (isDarkTheme) {
+            setTheme(R.style.Theme_Chatty_Dark)  // Önceden tanımlanmış karanlık tema
+        } else {
+            setTheme(R.style.Theme_Chatty_Light)  // Önceden tanımlanmış aydınlık tema
+        }
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.display_image_page)
         selectedPhotoURI = intent.getStringExtra("PHOTO_SELECTED")

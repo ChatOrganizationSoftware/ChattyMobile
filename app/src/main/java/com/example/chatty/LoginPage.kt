@@ -23,6 +23,7 @@ class LoginPage : AppCompatActivity() {
     private var showPassword = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_page)
 

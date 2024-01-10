@@ -41,6 +41,7 @@ class SignupPage : AppCompatActivity() {
     private var clicked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.signup_page)
 
