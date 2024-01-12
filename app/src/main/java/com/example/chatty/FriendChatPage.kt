@@ -38,7 +38,6 @@ class FriendChatPage : AppCompatActivity() {
     private lateinit var sendIcon: ImageView
     private lateinit var chatName: TextView
     private var chat: IndividualChat? = null
-    private var friend: User? = null
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
@@ -59,8 +58,9 @@ class FriendChatPage : AppCompatActivity() {
         setContentView(R.layout.friend_chat_page)
 
         val chatId = intent.getStringExtra("CHAT_ID")!!
+        val friendId = intent.getStringExtra("FRIEND_ID")!!
 
-        databaseRef.getReference("/users/$uid/chats/$chatId/read")
+        databaseRef.getReference("/users/$uid/chats/$friendId/read")
             .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if(snapshot.exists() && snapshot.getValue(Boolean::class.java) == false)
@@ -68,7 +68,6 @@ class FriendChatPage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
@@ -99,7 +98,6 @@ class FriendChatPage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
@@ -109,21 +107,13 @@ class FriendChatPage : AppCompatActivity() {
                     if(snapshot.exists()) {
                         chat = snapshot.getValue(IndividualChat::class.java)
 
-                        var ref: DatabaseReference? = null
-                        if (uid == chat!!.user1)
-                            ref = databaseRef.getReference("/users/${chat!!.user2}")
-                        else
-                            ref = databaseRef.getReference("/users/${chat!!.user1}")
-
-                        ref.addListenerForSingleValueEvent(object : ValueEventListener {
+                        databaseRef.getReference("/users/$friendId")
+                            .addListenerForSingleValueEvent(object : ValueEventListener {
                             override fun onDataChange(snapshot: DataSnapshot) {
-                                // Parse the user data from snapshot and update the UI
-                                friend = snapshot.getValue(User::class.java)
-                                if (friend == null)
-                                    showToast("Error: Couldn't get the user data")
-                                else {
-                                    chatName.text = friend!!.username
-                                    val image = friend!!.profilePhoto
+                                if(snapshot.exists()) {
+
+                                    chatName.text = snapshot.child("username").getValue(String::class.java)
+                                    val image = snapshot.child("profilePhoto").getValue(String::class.java)
                                     if (image != "") {
                                         Picasso.get().load(image).into(friendChatProfilePhoto)
                                     }
@@ -138,7 +128,6 @@ class FriendChatPage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
         listenMessages(chatId)
@@ -149,7 +138,7 @@ class FriendChatPage : AppCompatActivity() {
             val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
             val intent = Intent(this@FriendChatPage, FriendProfilePage::class.java)
-            intent.putExtra(USER_KEY, friend!!.userId)
+            intent.putExtra("USER_ID", friendId)
             intent.putExtra("CHAT_ID", chatId)
             startActivity(intent, null)
         }
@@ -162,9 +151,9 @@ class FriendChatPage : AppCompatActivity() {
                 val message = IndividualMessage( ref.key!!, text, null, uid!!)
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now().seconds
-                    databaseRef.getReference("/users/${friend?.userId}/chats/${chat!!.id}/read").setValue(false)
-                    databaseRef.getReference("/users/${chat!!.user1}/chats/${chat!!.id}/time").setValue(time)
-                    databaseRef.getReference("/users/${chat!!.user2}/chats/${chat!!.id}/time").setValue(time)
+                    databaseRef.getReference("/users/$friendId/chats/$uid/read").setValue(false)
+                    databaseRef.getReference("/users/$friendId/chats/$uid/time").setValue(time)
+                    databaseRef.getReference("/users/$uid/chats/$friendId/time").setValue(time)
 
                     enteredMessage.setText("")
                 }
@@ -198,28 +187,19 @@ class FriendChatPage : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                TODO("Not yet implemented")
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                TODO("Not yet implemented")
             }
 
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-                TODO("Not yet implemented")
             }
 
             override fun onChildRemoved(snapshot: DataSnapshot) {
-                TODO("Not yet implemented")
             }
 
         })
     }
-
-    companion object{
-        const val USER_KEY = "USER_KEY"
-    }
-
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {

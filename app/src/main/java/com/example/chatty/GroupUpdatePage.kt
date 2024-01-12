@@ -87,7 +87,6 @@ class GroupUpdatePage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
@@ -147,9 +146,11 @@ class GroupUpdatePage : AppCompatActivity() {
                         FirebaseDatabase.getInstance().getReference("/users/${userId}")
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(snapshot: DataSnapshot) {
-                                    val user = snapshot.getValue(User::class.java)
-                                    if (user != null) {
-                                        groupAdapter.add(GroupUserItem(user))
+                                    if(snapshot.exists()) {
+                                        val chat = Chat(userId!!, false)
+                                        chat.name = snapshot.child("username").getValue(String::class.java)
+                                        chat.photoURI = snapshot.child("profilePhoto").getValue(String::class.java)
+                                        groupAdapter.add(GroupUserItem(chat))
                                     }
                                 }
 
@@ -165,14 +166,14 @@ class GroupUpdatePage : AppCompatActivity() {
                     val userItem = item as GroupUserItem
                     if(!userItem.selected){
                         userItem.selected = true
-                        members.put(userItem.user.userId, true)
+                        members.put(userItem.chat.id, true)
                         view.findViewById<ConstraintLayout>(R.id.chat_row_background).setBackgroundColor(
                             Color.parseColor("#504F4F"))
                         view.findViewById<TextView>(R.id.username_newfriend_row).setTextColor(Color.WHITE)
                     }
                     else{
                         userItem.selected = false
-                        members.remove(userItem.user.userId)
+                        members.remove(userItem.chat.id)
                         view.findViewById<ConstraintLayout>(R.id.chat_row_background).setBackgroundColor(
                             Color.parseColor("#e6e3e3"))
                         view.findViewById<TextView>(R.id.username_newfriend_row).setTextColor(Color.BLACK)

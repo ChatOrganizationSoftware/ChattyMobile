@@ -37,7 +37,7 @@ class NonFriendProfilePage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.nonfriend_profile_page)
 
-        val userId = intent.getStringExtra(FriendChatPage.USER_KEY)
+        val userId = intent.getStringExtra("USER_ID")
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar2)
         setSupportActionBar(toolbar)

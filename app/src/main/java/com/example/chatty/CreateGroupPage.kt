@@ -120,40 +120,48 @@ class CreateGroupPage : AppCompatActivity() {
 
     // Fetch friends to select the ones added to group
     private fun fetchFriends(){
-        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/friends")
+        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
             .addListenerForSingleValueEvent(object: ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot){
-                snapshot.children.forEach{
-                    val userId = it.key
+                if(snapshot.exists()) {
+                    snapshot.children.forEach {
+                        val userId = it.key
 
-                    databaseRef.getReference("/users/${userId}").addListenerForSingleValueEvent(object: ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            val user = snapshot.getValue(User::class.java)
-                            if (user != null){
-                                groupAdapter.add(GroupUserItem(user))
-                            }
-                        }
+                        databaseRef.getReference("/users/${userId}")
+                            .addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(snapshot: DataSnapshot) {
+                                    if(snapshot.exists() && !snapshot.child("group").exists()) {
+                                        val chat = Chat(userId!!, false)
+                                        chat.name = snapshot.child("username").getValue(String::class.java)
+                                        chat.photoURI = snapshot.child("profilePhoto").getValue(String::class.java)
+                                        groupAdapter.add(GroupUserItem(chat))
+                                    }
+                                }
 
-                        override fun onCancelled(error: DatabaseError) {
+                                override fun onCancelled(error: DatabaseError) {
 
-                        }
-                    })
+                                }
+                            })
 
-                }
-
-                groupAdapter.setOnItemClickListener { item, view ->
-                    val userItem = item as GroupUserItem
-                    if(!userItem.selected){
-                        userItem.selected = true
-                        members.put(userItem.user.userId, true)
-                        view.findViewById<ConstraintLayout>(R.id.chat_row_background).setBackgroundColor(Color.parseColor("#504F4F"))
-                        view.findViewById<TextView>(R.id.username_newfriend_row).setTextColor(Color.WHITE)
                     }
-                    else{
-                        userItem.selected = false
-                        members.remove(userItem.user.userId)
-                        view.findViewById<ConstraintLayout>(R.id.chat_row_background).setBackgroundColor(Color.parseColor("#e6e3e3"))
-                        view.findViewById<TextView>(R.id.username_newfriend_row).setTextColor(Color.BLACK)
+
+                    groupAdapter.setOnItemClickListener { item, view ->
+                        val userItem = item as GroupUserItem
+                        if (!userItem.selected) {
+                            userItem.selected = true
+                            members.put(userItem.chat.id, true)
+                            view.findViewById<ConstraintLayout>(R.id.chat_row_background)
+                                .setBackgroundColor(Color.parseColor("#504F4F"))
+                            view.findViewById<TextView>(R.id.username_newfriend_row)
+                                .setTextColor(Color.WHITE)
+                        } else {
+                            userItem.selected = false
+                            members.remove(userItem.chat.id)
+                            view.findViewById<ConstraintLayout>(R.id.chat_row_background)
+                                .setBackgroundColor(Color.parseColor("#e6e3e3"))
+                            view.findViewById<TextView>(R.id.username_newfriend_row)
+                                .setTextColor(Color.BLACK)
+                        }
                     }
                 }
             }
@@ -238,12 +246,12 @@ class CreateGroupPage : AppCompatActivity() {
 }
 
 // Class to display the users for adding users to group
-class GroupUserItem(val user: User): Item<GroupieViewHolder>(){
+class GroupUserItem(val chat: Chat): Item<GroupieViewHolder>(){
     var selected = false
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = user.username
-        if(user.profilePhoto!="")
-            Picasso.get().load(user.profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
+        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = chat.name
+        if(chat.photoURI!="")
+            Picasso.get().load(chat.photoURI).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
     }
 
 

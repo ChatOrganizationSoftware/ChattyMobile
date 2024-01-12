@@ -100,9 +100,9 @@ class NewFriendsPage : AppCompatActivity() {
             if (!clicked) {
                 clicked = true
                 val userItem = item as NewUserItem
-                if (block.contains(userItem.user.userId)) {
+                if (block.contains(userItem.chat.id)) {
                     val intent = Intent(view.context, NonFriendProfilePage::class.java)
-                    intent.putExtra(USER_KEY, userItem.user.userId)
+                    intent.putExtra("USER_ID", userItem.chat.id)
                     startActivity(intent)
                     clicked = false
                 } else {
@@ -110,29 +110,26 @@ class NewFriendsPage : AppCompatActivity() {
                     val chat = IndividualChat(
                         chatId,
                         FirebaseAuth.getInstance().uid!!,
-                        userItem.user.userId
+                        userItem.chat.id
                     )
                     val chatRef = databaseRef.getReference("/IndividualChats/${chatId}")
                     chatRef.setValue(chat).addOnFailureListener {
                         showToast("Error: Couldn't create the chat")
                     }.addOnCompleteListener {
                         val time = Timestamp.now().seconds
-                        databaseRef.getReference("/users/${chat.user1}/chats/${chat.id}/id")
+                        databaseRef.getReference("/users/${chat.user1}/chats/${chat.user2}/id")
                             .setValue(chat.id)
-                        databaseRef.getReference("/users/${chat.user1}/chats/${chat.id}/time")
+                        databaseRef.getReference("/users/${chat.user1}/chats/${chat.user2}/time")
                             .setValue(time)
-                        databaseRef.getReference("/users/${chat.user1}/friends/${chat.user2}")
-                            .setValue(chat.id)
 
-                        databaseRef.getReference("/users/${chat.user2}/chats/${chat.id}/id")
+                        databaseRef.getReference("/users/${chat.user2}/chats/${chat.user1}/id")
                             .setValue(chat.id)
-                        databaseRef.getReference("/users/${chat.user2}/chats/${chat.id}/time")
+                        databaseRef.getReference("/users/${chat.user2}/chats/${chat.user1}/time")
                             .setValue(time)
-                        databaseRef.getReference("/users/${chat.user2}/friends/${chat.user1}")
-                            .setValue(chat.id)
 
                         val intent = Intent(view.context, FriendChatPage::class.java)
                         intent.putExtra("CHAT_ID", chat.id)
+                        intent.putExtra("FRIEND_ID", chat.user2)
                         startActivity(intent)
                         finish()
                     }
@@ -151,11 +148,11 @@ class NewFriendsPage : AppCompatActivity() {
             .addListenerForSingleValueEvent(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 snapshot.children.forEach{
-                    val user = it.getValue(User::class.java)
-                    if (user != null) {
-                        if (user.visibility =="Public" && it.key != FirebaseAuth.getInstance().currentUser?.uid && !friends.contains(user.userId) && !blockedBy.contains(user.userId) && user.active == true){
-                            groupAdapter.add(NewUserItem(user))
-                        }
+                    if (it.child("visibility").getValue(String::class.java) =="Public" && it.key != FirebaseAuth.getInstance().uid && !friends.contains(it.key) && !blockedBy.contains(it.key) && it.child("active").getValue(Boolean::class.java) == true){
+                        val chat = Chat(it.key!!, false)
+                        chat.name = it.child("username").getValue(String::class.java)
+                        chat.photoURI = it.child("profilePhoto").getValue(String::class.java)
+                        groupAdapter.add(NewUserItem(chat))
                     }
                 }
             }
@@ -180,20 +177,17 @@ class NewFriendsPage : AppCompatActivity() {
 
     // Returns the users we are already messaging so we don't display them again.
     private fun returnFriends() {
-        val ref = databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/friends")
+        val ref = databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
         ref.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                friends = mutableListOf()
-                for (snapshot in dataSnapshot.children) {
-                    snapshot.key?.let { friends.add(it) }
+                if( dataSnapshot.exists() && !dataSnapshot.child("group").exists()) {
+                    friends = mutableListOf()
+                    for (snapshot in dataSnapshot.children)
+                        snapshot.key?.let { friends.add(it) }
                 }
-
-
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
-                // Handle errors if any
-                println("Error: ${databaseError.message}")
             }
         })
 
@@ -209,7 +203,6 @@ class NewFriendsPage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
@@ -225,7 +218,6 @@ class NewFriendsPage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
     }
@@ -237,15 +229,14 @@ class NewFriendsPage : AppCompatActivity() {
 }
 
 // Class to display the new users
-class NewUserItem(val user: User): Item<GroupieViewHolder>(){
+class NewUserItem(val chat: Chat): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = user.username
-        viewHolder.itemView.findViewById<TextView>(R.id.visibility_newfriend_row).text = user.visibility
-        if(user.profilePhoto!="")
-            Picasso.get().load(user.profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
+        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = chat.name
+        if(chat.photoURI !="")
+            Picasso.get().load(chat.photoURI).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
     }
 
     override fun getLayout(): Int {
-        return R.layout.new_friends_row
+        return R.layout.chat_row
     }
 }

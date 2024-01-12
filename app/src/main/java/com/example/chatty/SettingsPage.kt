@@ -62,7 +62,6 @@ class SettingsPage: AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
@@ -99,7 +98,6 @@ class SettingsPage: AppCompatActivity() {
                                 }
 
                                 override fun onCancelled(error: DatabaseError) {
-                                    TODO("Not yet implemented")
                                 }
                             })
                     } else {
@@ -151,7 +149,6 @@ class SettingsPage: AppCompatActivity() {
                                 }
 
                                 override fun onCancelled(error: DatabaseError) {
-                                    TODO("Not yet implemented")
                                 }
                             })
                     }

@@ -1,5 +1,6 @@
 package com.example.chatty
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
@@ -24,7 +25,6 @@ class FriendProfilePage : AppCompatActivity() {
     private lateinit var removeChatButton: Button
     private var currentUser: String? = null
     private var chatId: String? = null
-    private var user: User? = null
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
     private var deleted = false
@@ -43,7 +43,7 @@ class FriendProfilePage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_profile_page)
 
-        val userId = intent.getStringExtra(FriendChatPage.USER_KEY)
+        val userId = intent.getStringExtra("USER_ID")
         chatId = intent.getStringExtra("CHAT_ID")
 
         databaseRef.getReference("/IndividualChats/$chatId")
@@ -55,7 +55,6 @@ class FriendProfilePage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
@@ -77,69 +76,64 @@ class FriendProfilePage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
         databaseRef.getReference("/users/${userId}")
             .addListenerForSingleValueEvent(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    user = snapshot.getValue(User::class.java)
-                    nameField.text = user!!.username
-                    aboutField.text = user!!.about
-                    visibility.text = user!!.visibility
-                    if (user!!.profilePhoto != "") {
-                        Picasso.get().load(user!!.profilePhoto)
-                            .into(findViewById<CircleImageView>(R.id.friend_profile_photo))
+                    if(snapshot.exists()) {
+                        nameField.text = snapshot.child("username").getValue(String::class.java)
+                        aboutField.text = snapshot.child("about").getValue(String::class.java)
+                        visibility.text = snapshot.child("visibility").getValue(String::class.java)
+                        val image = snapshot.child("profilePhoto").getValue(String::class.java)
+                        if (image != "") {
+                            Picasso.get().load(image).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
+                        }
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
         removeChatButton.setOnClickListener {
             deleted = true
+            databaseRef.getReference("/users/$uid/friends/$userId").removeValue()
+            databaseRef.getReference("/users/$userId/friends/$uid").removeValue()
+            databaseRef.getReference("/users/$userId/chats/$chatId").removeValue()
+            databaseRef.getReference("/users/$userId/notifications").push().setValue("{$currentUser} has removed your chat.")
 
-            if (user != null) {
-                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}").removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}").removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}").removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("{$currentUser} has removed your chat.")
 
-                databaseRef.getReference("/IndividualChats/$chatId/deleted").setValue(true)
-                    .addOnCompleteListener {
-                        databaseRef.getReference("/users/${uid}/chats/${chatId}")
-                            .removeValue().addOnCompleteListener {
-                                finish()
-                            }
-                    }
-            }
+            databaseRef.getReference("/users/$uid/chats/$userId")
+                .removeValue().addOnCompleteListener {
+                    databaseRef.getReference("/IndividualChats/$chatId").removeValue()
+                    startActivity(Intent(this, MainPage::class.java))
+
+                    finishAffinity()
+                }
         }
 
         blockButton.setOnClickListener {
             deleted = true
-            if (user != null) {
+            databaseRef.getReference("/users/$uid/block/$userId").setValue(userId)
+            databaseRef.getReference("/users/$userId/blockedBy/$uid").setValue(uid)
 
-                databaseRef.getReference("/users/${uid}/block/${user!!.userId}").setValue(user!!.userId)
-                databaseRef.getReference("/users/${user!!.userId}/blockedBy/${uid}").setValue(uid)
+            databaseRef.getReference("/users/$uid/friends/$userId").removeValue()
+            databaseRef.getReference("/users/$userId/friends/$uid").removeValue()
+            databaseRef.getReference("/users/$userId/chats/$chatId").removeValue()
+            databaseRef.getReference("/users/$userId/notifications").push().setValue("{$currentUser} has blocked you.")
 
-                databaseRef.getReference("/users/${uid}/friends/${user!!.userId}").removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/friends/${uid}").removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/chats/${chatId}").removeValue()
-                databaseRef.getReference("/users/${user!!.userId}/notifications").push().setValue("{$currentUser} has blocked you.")
-                databaseRef.getReference("/IndividualChats/$chatId/deleted").setValue(true)
-                    .addOnCompleteListener {
-                        databaseRef.getReference("/users/${uid}/chats/${chatId}")
-                            .removeValue().addOnCompleteListener {
-                                finish()
-                            }
-                    }
+            databaseRef.getReference("/users/$uid/chats/$userId")
+                .removeValue().addOnCompleteListener {
+                    databaseRef.getReference("/IndividualChats/$chatId").removeValue()
+                    startActivity(Intent(this, MainPage::class.java))
 
+                    finishAffinity()
+                }
             }
-        }
     }
+
 
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

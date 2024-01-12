@@ -56,7 +56,6 @@ class MainPage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
@@ -77,20 +76,18 @@ class MainPage : AppCompatActivity() {
 
         groupAdapter.setOnItemClickListener { item, view ->
 
-            if (item is ChatItem) {
-                val chatItem = item as ChatItem
-                val chat = chatItem.chatId
-
+            val chatItem = item as ChatItem
+            val chat = chatItem.chat
+            if(!chat.group) {
                 val intent = Intent(view.context, FriendChatPage::class.java)
-                intent.putExtra("CHAT_ID", chat)
+                intent.putExtra("CHAT_ID", chat.id)
+                intent.putExtra("FRIEND_ID", chat.friendId)
                 startActivity(intent)
-            } else {
-                val groupItem = item as GroupItem
-                val group = groupItem.groupId
-
-                val intent = Intent(view.context, GroupChatPage::class.java)
-                intent.putExtra(NewFriendsPage.USER_KEY, group)
-                startActivity(intent)
+            }
+            else {
+                    val intent = Intent(view.context, GroupChatPage::class.java)
+                    intent.putExtra(NewFriendsPage.USER_KEY, chat.id)
+                    startActivity(intent)
             }
         }
 
@@ -101,50 +98,42 @@ class MainPage : AppCompatActivity() {
     }
 
     private fun displayChats(){
-        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
+        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats").orderByChild("time")
             .addValueEventListener(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if(snapshot.exists()) {
-                    val inputChats = mutableListOf<Chat>()
                     groupAdapter.clear()
                     for (data in snapshot.children) {
-                        val chat = Chat(
-                            data.child("id").getValue(String::class.java)!!,
-                            data.child("group").exists(),
-                            data.child("time").getValue(Long::class.java)!!
-                        )
-                        chat.read = data.child("read").getValue(Boolean::class.java) != false
-                        inputChats.add(chat)
-                    }
+                        if(!data.child("group").exists()) {
+                            databaseRef.getReference("/users/${data.key}")
+                                .addListenerForSingleValueEvent(object: ValueEventListener{
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        val chat = Chat(data.child("id").getValue(String::class.java)!!, false)
+                                        chat.name = snapshot.child("username").getValue(String::class.java)
+                                        chat.photoURI = snapshot.child("profilePhoto").getValue(String::class.java)
+                                        chat.read = !(data.child("read").exists() && data.child("read").getValue(Boolean::class.java) == false )
+                                        chat.friendId = data.key
+                                        groupAdapter.add(ChatItem(chat))
+                                    }
 
-                    val sortedChats = inputChats.sortedByDescending { it.time }
-                    CoroutineScope(Dispatchers.IO).launch {
-                        for (chat in sortedChats) {
-                            if (!chat.group) {
-                                val user: User = getFriendForIndividualChat(chat.id)
-                                launch(Dispatchers.Main) {
-                                    groupAdapter.add(
-                                        ChatItem(
-                                            chat.id,
-                                            user.username,
-                                            user.profilePhoto,
-                                            chat.read
-                                        )
-                                    )
-                                }.join() // Wait for UI update to complete
-                            } else {
-                                val group: Group = getGroup(chat.id)
-                                launch(Dispatchers.Main) {
-                                    groupAdapter.add(
-                                        GroupItem(
-                                            chat.id,
-                                            group.name,
-                                            group.groupPhoto,
-                                            chat.read
-                                        )
-                                    )
-                                }.join() // Wait for UI update to complete
-                            }
+                                    override fun onCancelled(error: DatabaseError) {
+                                    }
+                                })
+                        }
+                        else{
+                            databaseRef.getReference("/GroupChats/${data.key}")
+                                .addListenerForSingleValueEvent(object: ValueEventListener{
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        val chat = Chat(data.child("groupId").getValue(String::class.java)!!, true)
+                                        chat.name = snapshot.child("name").getValue(String::class.java)
+                                        chat.photoURI = snapshot.child("profilePhoto").getValue(String::class.java)
+                                        chat.read = (data.child("read").exists() && data.child("read").getValue(Boolean::class.java) == true )
+                                        groupAdapter.add(ChatItem(chat))
+                                    }
+
+                                    override fun onCancelled(error: DatabaseError) {
+                                    }
+                                })
                         }
                     }
                 }
@@ -153,30 +142,6 @@ class MainPage : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {
             }
         })
-    }
-
-    private suspend fun getFriendForIndividualChat(chatId: String): User {
-        return withContext(Dispatchers.IO) {
-            val chatRef = databaseRef.getReference("/IndividualChats/$chatId")
-            val snapshot = chatRef.get().await()
-            val chat = snapshot.getValue(IndividualChat::class.java)
-            val friend = if (FirebaseAuth.getInstance().uid == chat?.user1) {
-                chat?.user2
-            } else {
-                chat?.user1
-            }
-            val snap = FirebaseDatabase.getInstance().getReference("/users/$friend").get().await()
-            val user = snap.getValue(User::class.java)
-            return@withContext user!! // Ensure friend is not null
-        }
-    }
-
-    private suspend fun getGroup(chatId: String): Group {
-        return withContext(Dispatchers.IO) {
-            val snapshot = FirebaseDatabase.getInstance().getReference("/GroupChats/$chatId").get().await()
-            val group = snapshot.getValue(Group::class.java)
-            return@withContext group!! // Ensure friend is not null
-        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -218,33 +183,15 @@ class MainPage : AppCompatActivity() {
 }
 
 // Class to display the chats
-class ChatItem(val chatId:String, val username: String, val profilePhoto: String, var read: Boolean): Item<GroupieViewHolder>(){
+class ChatItem(val chat: Chat): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        if(!read)
+        if(!chat.read)
             viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.VISIBLE
         else
             viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.INVISIBLE
-        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = username
-        if(profilePhoto!="")
-            Picasso.get().load(profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
-    }
-
-    override fun getLayout(): Int {
-        return R.layout.chat_row
-    }
-}
-
-// Class to display the groups
-class GroupItem(val groupId: String, val name: String, val groupPhoto: String, var read: Boolean): Item<GroupieViewHolder>(){
-    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        if(!read)
-            viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.VISIBLE
-        else
-            viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.INVISIBLE
-
-        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = name
-        if(groupPhoto!="")
-            Picasso.get().load(groupPhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
+        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = chat.name
+        if(chat.photoURI!="")
+            Picasso.get().load(chat.photoURI).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
     }
 
     override fun getLayout(): Int {
