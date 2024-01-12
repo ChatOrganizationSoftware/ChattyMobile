@@ -1,5 +1,25 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+
+    <color name="white">#FFFFFF</color>
+    <!-- Diğer renk tanımlamalarınız -->
+    <!-- Light theme colors -->
+    <color name="light_primary">#FFFFFF</color>
+    <color name="light_primary_variant">#EEEEEE</color>
+    <color name="light_on_primary">#000000</color>
+    <color name="orange">#E5E2E2</color>
+
+    <!-- Dark theme colors -->
+    <color name="dark_primary">#000000</color>
+    <color name="dark_primary_variant">#121212</color>
+    <color name="dark_on_primary">#FFFFFF</color>
+
+    <color name="light_background">#FFFFFF</color> <!-- Beyaz -->
+
+    <!-- Karanlık tema için arka plan rengi -->
+    <color name="dark_background">#717171</color> <!-- Siyah -->
+
+    <color name="light_text">#FFFFFF</color> <!-- Beyaz -->
+
+    <!-- Karanlık tema için arka plan rengi -->
+    <color name="dark_text">#000000</color> <!-- Siyah -->
 </resources>

@@ -25,6 +25,16 @@ class SettingsPage: AppCompatActivity() {
     private var chats = mutableListOf<Chat>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        val isDarkTheme = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
+            .getBoolean("DARK_THEME", false)
+
+        if (isDarkTheme) {
+            setTheme(R.style.Theme_Chatty_Dark)  // Önceden tanımlanmış karanlık tema
+        } else {
+            setTheme(R.style.Theme_Chatty_Light)  // Önceden tanımlanmış aydınlık tema
+        }
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.settings_page)
 
@@ -36,6 +46,10 @@ class SettingsPage: AppCompatActivity() {
         themeSettings = findViewById(R.id.themeSettings)
         changePasswordSettings = findViewById(R.id.changePasswordSettings)
         deleteAccountSettings = findViewById(R.id.deleteAccountSettings)
+
+        themeSettings.setOnClickListener {
+            toggleTheme()
+        }
 
         databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}")
             .addListenerForSingleValueEvent(object: ValueEventListener{
@@ -153,6 +167,15 @@ class SettingsPage: AppCompatActivity() {
                     finish()
                 }
         }
+    }
+
+    private fun toggleTheme() {
+        val sharedPreferences = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
+        val isDarkTheme = sharedPreferences.getBoolean("DARK_THEME", false)
+
+        sharedPreferences.edit().putBoolean("DARK_THEME", !isDarkTheme).apply()
+
+        recreate()  // Aktiviteyi yeniden başlatarak temayı uygula
     }
 
     private fun showToast(message: String) {
