@@ -196,13 +196,11 @@ class SignupPage : AppCompatActivity() {
         val ref = FirebaseDatabase.getInstance().getReference("users/$uid")
 
         val user = User(uid!!, nameField.text.toString().trim(), profileImageUri)
-        ref.setValue(user).addOnSuccessListener {
-            val intent = Intent(this, MainPage::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
-        }.addOnFailureListener{
-            showToast("Failed to store the data: ${it.message}")
-        }
+        ref.setValue(user)
+
+        val intent = Intent(this, MainPage::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
     }
 
     // Shows a message on the screen

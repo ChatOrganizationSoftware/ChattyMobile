@@ -33,12 +33,10 @@ class GroupChatPage : AppCompatActivity() {
     private lateinit var recyclerChatLog: RecyclerView
     private lateinit var friendChatProfilePhoto: CircleImageView
     private lateinit var sendIcon: ImageView
-    private lateinit var sendImageIcon: ImageView
     private lateinit var chatName: TextView
     private var group = Group()
     private lateinit var groupId: String
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
-    private var selectedPhoto: Uri? = null
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
     private var listened = false
@@ -77,7 +75,6 @@ class GroupChatPage : AppCompatActivity() {
         val actionBar = supportActionBar
         actionBar?.setDisplayShowTitleEnabled(false)
 
-        sendImageIcon = findViewById(R.id.sendImageIcon)
         sendIcon = findViewById(R.id.messageSendIcon)
         enteredMessage = findViewById(R.id.enteredMessage)
         friendChatProfilePhoto = findViewById(R.id.friendChatProfilePhoto)
@@ -170,31 +167,8 @@ class GroupChatPage : AppCompatActivity() {
                 }
             }
         }
-
-        sendImageIcon.setOnClickListener {
-            enteredMessage.setText("")
-            enteredMessage.clearFocus() // Clear focus from EditText
-            val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
-
-            val intent = Intent(Intent.ACTION_PICK)
-            intent.type = "image/*"
-            startActivityForResult(intent, 0)
-        }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if(requestCode==0 && resultCode== Activity.RESULT_OK && data!=null){
-            selectedPhoto = data.data
-
-            val intent = Intent(this, DisplayImageGroupPage::class.java)
-            intent.putExtra("PHOTO_SELECTED", selectedPhoto.toString())
-            intent.putExtra("GROUP", group)
-            startActivity(intent)
-        }
-    }
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
@@ -209,22 +183,12 @@ class GroupChatPage : AppCompatActivity() {
                 if(message == null)
                     showToast("NULL")
                 else {
-                    if (message.photoURI == null) {
-                        if (uid == message.senderId) {
-                            groupAdapter.add(FriendChatToItem(message.message!!))
-                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                        } else {
-                            val sender = group.currentMembers[message.senderId]
-                            groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
-                        }
+                    if (uid == message.senderId) {
+                        groupAdapter.add(FriendChatToItem(message.message!!))
+                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     } else {
-                        if (uid == message.senderId) {
-                            groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
-                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                        } else {
-                            val sender = group.currentMembers[message.senderId]
-                            groupAdapter.add(GroupChatFromPhoto(sender!!, message.photoURI!!))
-                        }
+                        val sender = group.currentMembers[message.senderId]
+                        groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
                     }
                 }
             }
@@ -272,16 +236,5 @@ class GroupChatFromItem(val text: String, val username:String): Item<GroupieView
 
     override fun getLayout(): Int {
         return R.layout.group_chat_from_row
-    }
-}
-
-class GroupChatFromPhoto(val username: String, val photoURI: String): Item<GroupieViewHolder>(){
-    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        viewHolder.itemView.findViewById<TextView>(R.id.textView13at_row_username).text = username
-        Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<ImageView>(R.id.sentPhoto))
-    }
-
-    override fun getLayout(): Int {
-        return R.layout.group_chat_from_photo
     }
 }

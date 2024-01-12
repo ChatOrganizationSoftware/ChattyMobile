@@ -40,8 +40,6 @@ class FriendChatPage : AppCompatActivity() {
     private var chat: IndividualChat? = null
     private var friend: User? = null
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
-    private lateinit var sendImageIcon: ImageView
-    private var selectedPhoto: Uri? = null
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
 
@@ -80,7 +78,6 @@ class FriendChatPage : AppCompatActivity() {
         val actionBar = supportActionBar
         actionBar?.setDisplayShowTitleEnabled(false)
 
-        sendImageIcon = findViewById(R.id.sendImageIcon)
         sendIcon = findViewById(R.id.messageSendIcon)
         enteredMessage = findViewById(R.id.enteredMessage)
         friendChatProfilePhoto = findViewById(R.id.friendChatProfilePhoto)
@@ -109,34 +106,35 @@ class FriendChatPage : AppCompatActivity() {
         databaseRef.getReference("/IndividualChats/$chatId")
             .addListenerForSingleValueEvent(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.exists()) {
+                        chat = snapshot.getValue(IndividualChat::class.java)
 
-                    chat = snapshot.getValue(IndividualChat::class.java)
+                        var ref: DatabaseReference? = null
+                        if (uid == chat!!.user1)
+                            ref = databaseRef.getReference("/users/${chat!!.user2}")
+                        else
+                            ref = databaseRef.getReference("/users/${chat!!.user1}")
 
-                    var ref: DatabaseReference? = null
-                    if(uid==chat!!.user1)
-                        ref = databaseRef.getReference("/users/${chat!!.user2}")
-                    else
-                        ref = databaseRef.getReference("/users/${chat!!.user1}")
-
-                    ref.addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            // Parse the user data from snapshot and update the UI
-                            friend = snapshot.getValue(User::class.java)
-                            if(friend==null)
-                                showToast("Error: Couldn't get the user data")
-                            else{
-                                chatName.text = friend!!.username
-                                val image = friend!!.profilePhoto
-                                if(image != "") {
-                                    Picasso.get().load(image).into(friendChatProfilePhoto)
+                        ref.addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(snapshot: DataSnapshot) {
+                                // Parse the user data from snapshot and update the UI
+                                friend = snapshot.getValue(User::class.java)
+                                if (friend == null)
+                                    showToast("Error: Couldn't get the user data")
+                                else {
+                                    chatName.text = friend!!.username
+                                    val image = friend!!.profilePhoto
+                                    if (image != "") {
+                                        Picasso.get().load(image).into(friendChatProfilePhoto)
+                                    }
                                 }
                             }
-                        }
 
-                        override fun onCancelled(error: DatabaseError) {
-                            // Handle any errors that occur while fetching data
-                        }
-                    })
+                            override fun onCancelled(error: DatabaseError) {
+                                // Handle any errors that occur while fetching data
+                            }
+                        })
+                    }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -172,16 +170,6 @@ class FriendChatPage : AppCompatActivity() {
                 }
             }
         }
-
-        sendImageIcon.setOnClickListener{
-            enteredMessage.setText("")
-            enteredMessage.clearFocus() // Clear focus from EditText
-            val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
-            val intent = Intent(Intent.ACTION_PICK)
-            intent.type = "image/*"
-            startActivityForResult(intent, 0)
-        }
     }
 
 
@@ -194,29 +182,19 @@ class FriendChatPage : AppCompatActivity() {
     private fun listenMessages(chatId: String){
         databaseRef.getReference("/IndividualChats/${chatId}/Messages").addChildEventListener(object: ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val message = IndividualMessage()
-                message.message = snapshot.child("message").getValue(String::class.java)
-                message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
-                message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
-                message.id = snapshot.key.toString()
+                if(snapshot.exists()) {
+                    val message = IndividualMessage()
+                    message.message = snapshot.child("message").getValue(String::class.java)
+                    message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
+                    message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
+                    message.id = snapshot.key.toString()
 
-                if(message.photoURI == null) {
                     if (uid == message.senderId) {
                         groupAdapter.add(FriendChatToItem(message.message!!))
                         recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                    }
-                    else
+                    } else
                         groupAdapter.add(FriendChatFromItem(message.message!!))
                 }
-                else{
-                    if (uid == message.senderId) {
-                        groupAdapter.add(FriendChatToPhoto(message.photoURI!!))
-                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                    }
-                    else
-                        groupAdapter.add(FriendChatFromPhoto(message.photoURI!!))
-                }
-
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -236,20 +214,6 @@ class FriendChatPage : AppCompatActivity() {
             }
 
         })
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if(requestCode==0 && resultCode== Activity.RESULT_OK && data!=null){
-            selectedPhoto = data.data
-
-            val intent = Intent(this, DisplayImagePage::class.java)
-            intent.putExtra("PHOTO_SELECTED", selectedPhoto.toString())
-            intent.putExtra("CHAT_ID", chat!!.id)
-            intent.putExtra("FRIEND_ID", friend?.userId)
-            startActivity(intent)
-        }
     }
 
     companion object{
@@ -289,25 +253,3 @@ class FriendChatToItem(val text: String): Item<GroupieViewHolder>(){
         return R.layout.friend_chat_to_row
     }
 }
-
-class FriendChatToPhoto(val photoURI: String): Item<GroupieViewHolder>(){
-    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<ImageView>(R.id.sentPhoto))
-    }
-
-    override fun getLayout(): Int {
-        return R.layout.friend_chat_to_photo
-    }
-}
-
-class FriendChatFromPhoto(val photoURI: String): Item<GroupieViewHolder>(){
-    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        Picasso.get().load(photoURI).into(viewHolder.itemView.findViewById<ImageView>(R.id.sentPhoto))
-    }
-
-    override fun getLayout(): Int {
-        return R.layout.friend_chat_from_photo
-    }
-}
-
-

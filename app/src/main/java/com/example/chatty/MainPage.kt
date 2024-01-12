@@ -48,7 +48,17 @@ class MainPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_page)
 
-        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/active").setValue(true)
+        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/active")
+            .addListenerForSingleValueEvent(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.exists())
+                        snapshot.ref.setValue(true)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    TODO("Not yet implemented")
+                }
+            })
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -94,15 +104,20 @@ class MainPage : AppCompatActivity() {
         databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
             .addValueEventListener(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
-                val inputChats = mutableListOf<Chat>()
-                groupAdapter.clear()
-                for(data in snapshot.children){
-                    val chat = Chat(data.child("id").getValue(String::class.java)!!, data.child("group").exists(), data.child("time").getValue(Long::class.java)!!)
-                    chat.read = data.child("read").getValue(Boolean::class.java) != false
-                    inputChats.add(chat)
-                }
+                if(snapshot.exists()) {
+                    val inputChats = mutableListOf<Chat>()
+                    groupAdapter.clear()
+                    for (data in snapshot.children) {
+                        val chat = Chat(
+                            data.child("id").getValue(String::class.java)!!,
+                            data.child("group").exists(),
+                            data.child("time").getValue(Long::class.java)!!
+                        )
+                        chat.read = data.child("read").getValue(Boolean::class.java) != false
+                        inputChats.add(chat)
+                    }
 
-                val sortedChats = inputChats.sortedByDescending { it.time }
+                    val sortedChats = inputChats.sortedByDescending { it.time }
                     CoroutineScope(Dispatchers.IO).launch {
                         for (chat in sortedChats) {
                             if (!chat.group) {
@@ -131,6 +146,7 @@ class MainPage : AppCompatActivity() {
                                 }.join() // Wait for UI update to complete
                             }
                         }
+                    }
                 }
             }
 
