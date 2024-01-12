@@ -23,11 +23,8 @@ class LoginPage : AppCompatActivity() {
     private var showPassword = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_page)
-
-        verifyUserIsLoggedIn()
 
         // Components on page
         emailField = findViewById(R.id.emailField)
@@ -38,12 +35,11 @@ class LoginPage : AppCompatActivity() {
         signUp = findViewById(R.id.signUp)
 
         // Click listener for eye icon to show/hide password
-        loginEye.setOnClickListener{
-            if(!showPassword){
+        loginEye.setOnClickListener {
+            if (!showPassword) {
                 passwordField.transformationMethod = HideReturnsTransformationMethod.getInstance()
                 showPassword = true
-            }
-            else{
+            } else {
                 passwordField.transformationMethod = PasswordTransformationMethod.getInstance()
                 showPassword = false
             }
@@ -73,15 +69,6 @@ class LoginPage : AppCompatActivity() {
         }
     }
 
-    // If the user has already logged in, navigate to main page
-    private fun verifyUserIsLoggedIn(){
-        if(FirebaseAuth.getInstance().currentUser != null){
-            val intent = Intent(this, MainPage::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
     // Shows a message on screen
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
@@ -97,8 +84,9 @@ class LoginPage : AppCompatActivity() {
                     return@addOnCompleteListener
                 // Login Successful
                 val intent = Intent(this, MainPage::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
+
+                finishAffinity()
             }
             .addOnFailureListener{
                 showToast("Failed to Login: ${it.message}")

@@ -161,7 +161,7 @@ class SettingsPage: AppCompatActivity() {
             FirebaseAuth.getInstance().currentUser?.delete()
                 ?.addOnCompleteListener {
                     FirebaseAuth.getInstance().signOut()
-                    val intent = Intent(this@SettingsPage, LoginPage::class.java),
+                    val intent = Intent(this@SettingsPage, LoginPage::class.java)
                     startActivity(intent)
                     finishAffinity()
                 }

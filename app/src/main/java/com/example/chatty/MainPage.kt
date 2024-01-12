@@ -151,7 +151,6 @@ class MainPage : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                TODO("Not yet implemented")
             }
         })
     }
@@ -186,28 +185,31 @@ class MainPage : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when(item?.itemId){
+        when (item?.itemId) {
             R.id.main_notifications -> {
                 val intent = Intent(this, NotificationsPage::class.java)
                 startActivity(intent)
             }
-            R.id.main_new_friends ->{
+
+            R.id.main_new_friends -> {
                 val intent = Intent(this, NewFriendsPage::class.java)
                 startActivity(intent)
             }
-            R.id.main_profile ->{
+
+            R.id.main_profile -> {
                 val intent = Intent(this, ProfilePage::class.java)
                 startActivity(intent)
             }
-            R.id.main_settings ->{
+
+            R.id.main_settings -> {
                 val intent = Intent(this, SettingsPage::class.java)
                 startActivity(intent)
             }
-            R.id.main_signout ->{
+
+            R.id.main_signout -> {
                 FirebaseAuth.getInstance().signOut()
                 val intent = Intent(this, LoginPage::class.java)
                 startActivity(intent)
-
                 finishAffinity()
             }
         }
