@@ -1,6 +1,7 @@
 package com.example.chatty
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -8,6 +9,7 @@ import android.text.method.HideReturnsTransformationMethod
 import android.text.method.PasswordTransformationMethod
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -32,7 +34,8 @@ class SignupPage : AppCompatActivity() {
     private lateinit var selectPhotoButton: ImageView
     private lateinit var selectPhotoText: TextView
     private var selectedPhotoUri: Uri? = null
-
+    private lateinit var kvkkLink: TextView
+    private lateinit var kvkkCheckBox: CheckBox
     private var showPassword = false
     private var showConfirm = false
     private var clicked = false
@@ -52,7 +55,7 @@ class SignupPage : AppCompatActivity() {
         signupEye2 = findViewById(R.id.signupEye2)
         signUpButton = findViewById(R.id.signUpButton)
         returnLoginButton = findViewById(R.id.returnLoginButton)
-
+        kvkkCheckBox = findViewById(R.id.kvkkCheckBox)
 
         selectPhotoButton.setOnClickListener{
             val intent = Intent(Intent.ACTION_PICK)
@@ -86,21 +89,59 @@ class SignupPage : AppCompatActivity() {
 
         // Click listener for Continue Button
         signUpButton.setOnClickListener {
+            // Önce KVKK kutusunu kontrol et
+            if (!kvkkCheckBox.isChecked) {
+                showToast("Please read and agree to the User Agreement and Privacy Policy")
+                return@setOnClickListener
+            }
+
+            // Eğer clicked daha önce ayarlanmamışsa, kayıt işlemini başlat
             if (!clicked) {
                 val name = nameField.text.toString().trim()
                 val email = emailField.text.toString().trim()
                 val password = passwordField.text.toString().trim()
                 val confirmPass = confirmField.text.toString().trim()
-                if (name.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPass.isEmpty())
+
+                if (name.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPass.isEmpty()) {
                     showToast("Please fill all the fields")
-                else if (password != confirmPass)
+                } else if (password != confirmPass) {
                     showToast("Password and Confirm Password should match")
-                else {
+                } else {
                     clicked = true
                     register(email, password)
                 }
             }
         }
+
+            kvkkLink = findViewById(R.id.kvkkLink)
+            kvkkLink.setOnClickListener {
+                // KVKK metnini göstermek için Dialog aç
+                AlertDialog.Builder(this)
+                    .setTitle("User Agreement and Privacy Policy")
+                    .setMessage("Welcome!\n" +
+                            "Before registering for our application, please carefully read the following User Agreement and Privacy Policy. By continuing, you accept these terms.\n\n" +
+                            "1. Security and Privacy\n" +
+                            "Our application is committed to protecting your security and privacy. In this regard, we continuously review and improve our security infrastructure.\n\n" +
+                            "Our security measures are supported by Firebase services. This means that our security protocols and applications are based on the security standards and technologies provided by Firebase. However, we have limited information about the specific details of these protocols.\n\n" +
+                            "The privacy of your personal data is extremely important to us. These data are used only to provide and improve our services and are processed in compliance with applicable laws.\n\n" +
+                            "2. Data Retention and Usage\n" +
+                            "The information you provide during registration will be used to manage your account and improve our services.\n\n" +
+                            "Your messages will be stored in our system for a certain period and then automatically deleted.\n\n" +
+                            "Anonymous data collection for statistical analysis and system improvements may be conducted.\n\n" +
+                            "3. User Responsibility\n" +
+                            "As a user, you commit to not using the application for illegal purposes.\n\n" +
+                            "Respecting copyright, intellectual property, and other legal rights is your responsibility.\n\n" +
+                            "4. Changes and Updates\n" +
+                            "Our application and policies may be updated from time to time. Please check this document regularly to be aware of such changes.\n\n" +
+                            "Contact and Support\n" +
+                            "If you have any questions, feedback, or concerns about our application and services, please do not hesitate to contact us. We value your opinions to continuously improve the user experience.\n\n" +
+                            "Contact Information:\n" +
+                            "Product Owner: Lorem Ipsum\n" +
+                            "Product Manager: Lorem Ipsum\n" +
+                            "Our door is always open for any feedback, suggestions, and questions. We commit to getting back to you as soon as possible.")
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
 
         // Click listener for Return to Login Button
         returnLoginButton.setOnClickListener {
