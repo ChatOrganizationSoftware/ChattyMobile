@@ -75,16 +75,6 @@
             app:layout_constraintBottom_toBottomOf="parent"
             tools:layout_editor_absoluteX="-12dp">
 
-            <ImageView
-                android:id="@+id/sendImageIcon"
-                android:layout_width="35dp"
-                android:layout_height="35dp"
-                android:layout_marginStart="5dp"
-                android:src="@drawable/image_regular"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
             <EditText
                 android:id="@+id/enteredMessage"
                 android:layout_width="0dp"
@@ -102,7 +92,7 @@
                 android:textSize="20sp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@+id/messageSendIcon"
-                app:layout_constraintStart_toEndOf="@+id/sendImageIcon"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintVertical_bias="0.5" />
 

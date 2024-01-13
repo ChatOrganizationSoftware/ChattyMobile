@@ -33,12 +33,46 @@ class MainPage : AppCompatActivity() {
     private lateinit var createGroupIcon: ImageView
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private var databaseRef = FirebaseDatabase.getInstance()
+    private val uid = FirebaseAuth.getInstance().uid
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        val isDarkTheme = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
+            .getBoolean("DARK_THEME", false)
+
+        if (isDarkTheme) {
+            setTheme(R.style.Theme_Chatty_Dark)  // Önceden tanımlanmış karanlık tema
+        } else {
+            setTheme(R.style.Theme_Chatty_Light)  // Önceden tanımlanmış aydınlık tema
+        }
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_page)
 
-        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/active").setValue(true)
+        databaseRef.getReference("/users/$uid")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists()){
+                        startActivity(Intent(this@MainPage, LoginPage::class.java))
+
+                        finishAffinity()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        databaseRef.getReference("/users/$uid/active")
+            .addListenerForSingleValueEvent(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists())
+                        snapshot.ref.setValue(true)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -57,19 +91,17 @@ class MainPage : AppCompatActivity() {
 
         groupAdapter.setOnItemClickListener { item, view ->
 
-            if (item is ChatItem) {
-                val chatItem = item as ChatItem
-                val chat = chatItem.chatId
-
+            val chatItem = item as ChatItem
+            val chat = chatItem.chat
+            if(!chat.group) {
                 val intent = Intent(view.context, FriendChatPage::class.java)
-                intent.putExtra("CHAT_ID", chat)
+                intent.putExtra("CHAT_ID", chat.id)
+                intent.putExtra("FRIEND_ID", chat.friendId)
                 startActivity(intent)
-            } else {
-                val groupItem = item as GroupItem
-                val group = groupItem.groupId
-
-                val intent = Intent(view.context, GroupChatPage::class.java)
-                intent.putExtra(NewFriendsPage.USER_KEY, group)
+            }
+            else {
+                val intent = Intent(this, GroupChatPage::class.java)
+                intent.putExtra("GROUP_ID", chat.id)
                 startActivity(intent)
             }
         }
@@ -81,76 +113,69 @@ class MainPage : AppCompatActivity() {
     }
 
     private fun displayChats(){
-        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}/chats")
+        databaseRef.getReference("/users/$uid/chats").orderByChild("time")
             .addValueEventListener(object: ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
-                val inputChats = mutableListOf<Chat>()
-                groupAdapter.clear()
-                for(data in snapshot.children){
-                    val chat = Chat(data.child("id").getValue(String::class.java)!!, data.child("group").exists(), data.child("time").getValue(Long::class.java)!!)
-                    chat.read = data.child("read").getValue(Boolean::class.java) != false
-                    inputChats.add(chat)
-                }
-
-                val sortedChats = inputChats.sortedByDescending { it.time }
+                if(snapshot.exists()) {
+                    groupAdapter.clear()
                     CoroutineScope(Dispatchers.IO).launch {
-                        for (chat in sortedChats) {
-                            if (!chat.group) {
-                                val user: User = getFriendForIndividualChat(chat.id)
-                                launch(Dispatchers.Main) {
-                                    groupAdapter.add(
-                                        ChatItem(
-                                            chat.id,
-                                            user.username,
-                                            user.profilePhoto,
-                                            chat.read
+                        for (snap in snapshot.children.reversed()) {
+                            if (snap.exists()) {
+                                val chat = Chat(
+                                    snap.child("id").getValue(String::class.java)!!,
+                                    snap.child("group").exists()
+                                )
+                                chat.read = snap.child("read").getValue(Boolean::class.java) != false
+                                chat.friendId = snap.key
+                                if (!chat.group) {
+                                    val finalChat = getFriendForIndividualChat(chat)
+                                    launch(Dispatchers.Main) {
+                                        groupAdapter.add(
+                                            ChatItem(
+                                                finalChat
+                                            )
                                         )
-                                    )
-                                }.join() // Wait for UI update to complete
-                            } else {
-                                val group: Group = getGroup(chat.id)
-                                launch(Dispatchers.Main) {
-                                    groupAdapter.add(
-                                        GroupItem(
-                                            chat.id,
-                                            group.name,
-                                            group.groupPhoto,
-                                            chat.read
+                                    }.join() // Wait for UI update to complete
+                                } else {
+                                    val finalChat = getGroup(chat)
+                                    launch(Dispatchers.Main) {
+                                        groupAdapter.add(
+                                            ChatItem(
+                                                finalChat
+                                            )
                                         )
-                                    )
-                                }.join() // Wait for UI update to complete
+                                    }.join() // Wait for UI update to complete
+                                }
                             }
                         }
+                    }
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                TODO("Not yet implemented")
             }
         })
     }
 
-    private suspend fun getFriendForIndividualChat(chatId: String): User {
+    private suspend fun getFriendForIndividualChat(chat: Chat): Chat {
         return withContext(Dispatchers.IO) {
-            val chatRef = databaseRef.getReference("/IndividualChats/$chatId")
+            val chatRef = databaseRef.getReference("/users/${chat.friendId}")
             val snapshot = chatRef.get().await()
-            val chat = snapshot.getValue(IndividualChat::class.java)
-            val friend = if (FirebaseAuth.getInstance().uid == chat?.user1) {
-                chat?.user2
-            } else {
-                chat?.user1
-            }
-            val snap = FirebaseDatabase.getInstance().getReference("/users/$friend").get().await()
-            val user = snap.getValue(User::class.java)
-            return@withContext user!! // Ensure friend is not null
+            chat.name = snapshot.child("username").getValue(String::class.java)
+            chat.photoURI = snapshot.child("profilePhoto").getValue(String::class.java)
+
+            return@withContext chat // Ensure friend is not null
         }
     }
 
-    private suspend fun getGroup(chatId: String): Group {
+    private suspend fun getGroup(chat: Chat): Chat {
         return withContext(Dispatchers.IO) {
-            val snapshot = FirebaseDatabase.getInstance().getReference("/GroupChats/$chatId").get().await()
-            val group = snapshot.getValue(Group::class.java)
-            return@withContext group!! // Ensure friend is not null
+            val chatRef = databaseRef.getReference("/GroupChats/${chat.id}")
+            val snapshot = chatRef.get().await()
+            chat.name = snapshot.child("name").getValue(String::class.java)
+            chat.photoURI = snapshot.child("groupPhoto").getValue(String::class.java)
+
+            return@withContext chat // Ensure friend is not null
         }
     }
 
@@ -160,28 +185,32 @@ class MainPage : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when(item?.itemId){
+        when (item?.itemId) {
             R.id.main_notifications -> {
                 val intent = Intent(this, NotificationsPage::class.java)
                 startActivity(intent)
             }
-            R.id.main_new_friends ->{
+
+            R.id.main_new_friends -> {
                 val intent = Intent(this, NewFriendsPage::class.java)
                 startActivity(intent)
             }
-            R.id.main_profile ->{
+
+            R.id.main_profile -> {
                 val intent = Intent(this, ProfilePage::class.java)
                 startActivity(intent)
             }
-            R.id.main_settings ->{
+
+            R.id.main_settings -> {
                 val intent = Intent(this, SettingsPage::class.java)
                 startActivity(intent)
             }
-            R.id.main_signout ->{
+
+            R.id.main_signout -> {
                 FirebaseAuth.getInstance().signOut()
                 val intent = Intent(this, LoginPage::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
+                finishAffinity()
             }
         }
         return super.onOptionsItemSelected(item)
@@ -189,33 +218,15 @@ class MainPage : AppCompatActivity() {
 }
 
 // Class to display the chats
-class ChatItem(val chatId:String, val username: String, val profilePhoto: String, var read: Boolean): Item<GroupieViewHolder>(){
+class ChatItem(val chat: Chat): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        if(!read)
+        if(!chat.read)
             viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.VISIBLE
         else
             viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.INVISIBLE
-        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = username
-        if(profilePhoto!="")
-            Picasso.get().load(profilePhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
-    }
-
-    override fun getLayout(): Int {
-        return R.layout.chat_row
-    }
-}
-
-// Class to display the groups
-class GroupItem(val groupId: String, val name: String, val groupPhoto: String, var read: Boolean): Item<GroupieViewHolder>(){
-    override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        if(!read)
-            viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.VISIBLE
-        else
-            viewHolder.itemView.findViewById<ImageView>(R.id.newMessageAlert).visibility = View.INVISIBLE
-
-        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = name
-        if(groupPhoto!="")
-            Picasso.get().load(groupPhoto).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
+        viewHolder.itemView.findViewById<TextView>(R.id.username_newfriend_row).text = chat.name
+        if(chat.photoURI!="")
+            Picasso.get().load(chat.photoURI).into(viewHolder.itemView.findViewById<CircleImageView>(R.id.image_newfriend_row))
     }
 
     override fun getLayout(): Int {
