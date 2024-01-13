@@ -46,19 +46,26 @@ class ProfilePage: AppCompatActivity() {
         visibility = findViewById(R.id.visibilityText)
 
         val user = FirebaseAuth.getInstance().currentUser!!.uid
-        val database = FirebaseDatabase.getInstance().getReference("users/$user")
-        database.addValueEventListener(object : ValueEventListener {
+        FirebaseDatabase.getInstance().getReference("users/$user")
+            .addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                // Parse the user data from snapshot and update the UI
-                nameField.text = snapshot.child("username").getValue(String::class.java)
-                aboutField.text = snapshot.child("about").getValue(String::class.java)
-                visibility.text = snapshot.child("visibility").getValue(String::class.java)
+                if(snapshot.exists()) {
+                    // Parse the user data from snapshot and update the UI
+                    nameField.text = snapshot.child("username").getValue(String::class.java)
+                    aboutField.text = snapshot.child("about").getValue(String::class.java)
+                    visibility.text = snapshot.child("visibility").getValue(String::class.java)
 
-                val image = snapshot.child("profilePhoto").getValue(String::class.java)
-                if(image != "") {
-                    Picasso.get().load(image).into(findViewById<CircleImageView>(R.id.profile_profile_photo))
+                    val image = snapshot.child("profilePhoto").getValue(String::class.java)
+                    if (image != "") {
+                        Picasso.get().load(image)
+                            .into(findViewById<CircleImageView>(R.id.profile_profile_photo))
+                    }
                 }
+                else{
+                    startActivity(Intent(this@ProfilePage, LoginPage::class.java))
 
+                    finishAffinity()
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {

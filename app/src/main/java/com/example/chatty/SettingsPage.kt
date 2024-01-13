@@ -12,6 +12,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
 
@@ -21,8 +22,10 @@ class SettingsPage: AppCompatActivity() {
     private lateinit var changePasswordSettings: ConstraintLayout
     private lateinit var deleteAccountSettings: ConstraintLayout
     private val databaseRef = FirebaseDatabase.getInstance()
-    private lateinit var user: User
+    private lateinit var username: String
     private var chats = mutableListOf<Chat>()
+    private val uid = FirebaseAuth.getInstance().uid
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -51,12 +54,40 @@ class SettingsPage: AppCompatActivity() {
             toggleTheme()
         }
 
-        databaseRef.getReference("/users/${FirebaseAuth.getInstance().uid}")
+        databaseRef.getReference("/users/$uid")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists()){
+                        startActivity(Intent(this@SettingsPage, LoginPage::class.java))
+
+                        finishAffinity()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        databaseRef.getReference("/users/$uid/username")
             .addListenerForSingleValueEvent(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    user = snapshot.getValue(User::class.java)!!
-                    for(data in snapshot.child("chats").children){
-                        val chat = Chat(data.child("id").getValue(String::class.java)!!, data.child("group").exists(), 0)
+                    username = snapshot.getValue(String::class.java)!!
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        databaseRef.getReference("/users/$uid/chats")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    chats = mutableListOf()
+                    for (data in snapshot.children) {
+                        val chat = Chat(
+                            data.child("id").getValue(String::class.java)!!,
+                            data.child("group").exists(),
+                            0
+                        )
                         chats.add(chat)
                     }
                 }
@@ -72,78 +103,74 @@ class SettingsPage: AppCompatActivity() {
                         databaseRef.getReference("/IndividualChats/${chat.id}")
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(snapshot: DataSnapshot) {
-                                    val indChat = snapshot.getValue(IndividualChat::class.java)
-                                    if (indChat != null) {
-                                        val folderRef = FirebaseStorage.getInstance()
-                                            .getReference("/${indChat.id}")
-                                        folderRef.listAll().addOnSuccessListener { list ->
-                                            list.items.forEach {
-                                                it.delete()
-                                            }
-                                        }
-                                        var friend = indChat.user1
-                                        if (user.userId == indChat.user1)
+                                    if(snapshot.exists()) {
+                                        val indChat = snapshot.getValue(IndividualChat::class.java)
+                                        var friend = indChat!!.user1
+                                        if (uid == indChat.user1)
                                             friend = indChat.user2
 
-                                        databaseRef.getReference("/users/${friend}/friends/${user.userId}")
-                                            .removeValue()
-                                        databaseRef.getReference("/users/${friend}/chats/${indChat.id}")
+                                        databaseRef.getReference("/users/${friend}/chats/$uid")
                                             .removeValue()
                                         databaseRef.getReference("/users/${friend}/notifications")
                                             .push()
-                                            .setValue("{${user.username}} has closed his/her account.")
-                                        databaseRef.getReference("/IndividualChats/${indChat.id}/deleted")
-                                            .setValue(true)
+                                            .setValue("{$username} has closed his/her account.")
+                                        databaseRef.getReference("/IndividualChats/${indChat.id}").removeValue()
                                     }
                                 }
 
                                 override fun onCancelled(error: DatabaseError) {
                                 }
                             })
-                    } else {
+                    }
+                    else {
                         databaseRef.getReference("/GroupChats/${chat.id}")
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(snapshot: DataSnapshot) {
-                                    val group = snapshot.getValue(Group::class.java)
-                                    if (group != null) {
-                                        group.members.remove(user.userId)
-                                        if (user.userId != group.adminId) {
-                                            if (group.members.keys.size > 1) {
-                                                databaseRef.getReference("/GroupChats/${group.groupId}/members/${user.userId}")
-                                                    .removeValue()
-                                                databaseRef.getReference("/GroupChats/${group.groupId}/prevMembers/${user.userId}")
-                                                    .setValue(user.username)
-                                            } else {
+                                    if(snapshot.exists()) {
+                                        val name = snapshot.child("name").getValue(String::class.java)
+                                        val genericType = object : GenericTypeIndicator<HashMap<String, String>>() {}
+                                        val members = snapshot.child("/members").getValue(genericType)?.values?.toMutableList()
+                                        val admin = snapshot.child("/adminId").getValue(String::class.java)
+                                        if (members != null) {
+                                            members.remove(uid)
+                                            if (uid != admin) {
+                                                if (members.size > 1) {
+                                                    databaseRef.getReference("/GroupChats/${chat.id}/members/$uid")
+                                                        .removeValue()
+                                                    databaseRef.getReference("/GroupChats/${chat.id}/prevMembers/$uid")
+                                                        .setValue(username)
+                                                }
+                                                else {
+                                                    FirebaseStorage.getInstance()
+                                                        .getReference("/Profile Photos/${chat.id}")
+                                                        .delete()
+                                                    for (mem in members) {
+                                                        databaseRef.getReference("/users/$mem/chats/${chat.id}")
+                                                            .removeValue()
+                                                            .addOnSuccessListener {
+                                                                databaseRef.getReference("/users/$mem/notifications")
+                                                                    .push()
+                                                                    .setValue("{$name} is closed.")
+                                                            }
+                                                    }
+                                                    databaseRef.getReference("/GroupChats/${chat.id}").removeValue()
+                                                }
+                                            }
+                                            else {
                                                 FirebaseStorage.getInstance()
-                                                    .getReference("/Profile Photos/${group.groupId}")
+                                                    .getReference("/Profile Photos/${chat.id}")
                                                     .delete()
-                                                for (mem in group.members.keys) {
-                                                    databaseRef.getReference("/users/$mem/chats/${group.groupId}")
+                                                for (mem in members) {
+                                                    databaseRef.getReference("/users/$mem/chats/${chat.id}")
                                                         .removeValue()
                                                         .addOnSuccessListener {
                                                             databaseRef.getReference("/users/$mem/notifications")
                                                                 .push()
-                                                                .setValue("{${group.name}} is closed.")
+                                                                .setValue("{$name} is closed.")
                                                         }
                                                 }
-                                                databaseRef.getReference("/GroupChats/${group.groupId}/deleted")
-                                                    .setValue(true)
+                                                databaseRef.getReference("/GroupChats/${chat.id}").removeValue()
                                             }
-                                        } else {
-                                            FirebaseStorage.getInstance()
-                                                .getReference("/Profile Photos/${group.groupId}")
-                                                .delete()
-                                            for (mem in group.members.keys) {
-                                                databaseRef.getReference("/users/$mem/chats/${group.groupId}")
-                                                    .removeValue()
-                                                    .addOnSuccessListener {
-                                                        databaseRef.getReference("/users/$mem/notifications")
-                                                            .push()
-                                                            .setValue("{${group.name}} is closed.")
-                                                    }
-                                            }
-                                            databaseRef.getReference("/GroupChats/${group.groupId}/deleted")
-                                                .setValue(true)
                                         }
                                     }
                                 }
@@ -154,10 +181,12 @@ class SettingsPage: AppCompatActivity() {
                     }
                 }
             }
-            FirebaseDatabase.getInstance().getReference("/users/${user.userId}/active").removeValue()
+
+            FirebaseDatabase.getInstance().getReference("/users/$uid").removeValue()
             FirebaseAuth.getInstance().currentUser?.delete()
                 ?.addOnCompleteListener {
                     FirebaseAuth.getInstance().signOut()
+
                     val intent = Intent(this@SettingsPage, LoginPage::class.java)
                     startActivity(intent)
                     finishAffinity()

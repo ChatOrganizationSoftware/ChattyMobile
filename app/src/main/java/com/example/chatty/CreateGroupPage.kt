@@ -31,7 +31,6 @@ import de.hdodenhof.circleimageview.CircleImageView
 import java.util.UUID
 
 class CreateGroupPage : AppCompatActivity() {
-    private lateinit var auth: FirebaseAuth
 
     private lateinit var editProfilePhoto: ImageView
 
@@ -45,6 +44,7 @@ class CreateGroupPage : AppCompatActivity() {
     private var members = hashMapOf<String, Boolean>()
     private var clicked = false
     private var group = Group()
+    private var uid = FirebaseAuth.getInstance().uid
 
     private val databaseRef = FirebaseDatabase.getInstance()
 
@@ -62,9 +62,21 @@ class CreateGroupPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.create_group_page)
 
-        auth = FirebaseAuth.getInstance()
+        members.put(uid!!, true)
 
-        members.put(auth.uid!!, true)
+        databaseRef.getReference("/users/$uid")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists()){
+                        startActivity(Intent(this@CreateGroupPage, LoginPage::class.java))
+
+                        finishAffinity()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
 
         // Toolbar above the screen
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
@@ -95,24 +107,49 @@ class CreateGroupPage : AppCompatActivity() {
 
         // Cancel the group creation
         cancelButton.setOnClickListener{
-            if(!clicked)
+            if(!clicked) {
+                clicked = true
                 finish()
+            }
         }
 
         // Create the group
         confirmButton.setOnClickListener{
             if(!clicked) {
+                clicked = true
                 group.name = nameEditText.text.toString().trim()
                 group.about = aboutEditText.text.toString().trim()
-                group.members = members
 
-                if (members.size == 0)
+                if (members.size == 0) {
                     showToast("Error: You must select at least 1 member for a group")
-                else if (group.name.isEmpty())
+                    clicked = false
+                }
+                else if (group.name.isEmpty()) {
                     showToast("Error: You should provide a group name")
-                else {
-                    clicked = true
+                    clicked = false
+                }
+                else
                     saveNewImage()          // Start creating the group with saving the group image
+            }
+        }
+
+        groupAdapter.setOnItemClickListener { item, view ->
+            if(!clicked) {
+                val userItem = item as GroupUserItem
+                if (!userItem.selected) {
+                    userItem.selected = true
+                    members.put(userItem.chat.id, true)
+                    view.findViewById<ConstraintLayout>(R.id.chat_row_background)
+                        .setBackgroundColor(Color.parseColor("#504F4F"))
+                    view.findViewById<TextView>(R.id.username_newfriend_row)
+                        .setTextColor(Color.WHITE)
+                } else {
+                    userItem.selected = false
+                    members.remove(userItem.chat.id)
+                    view.findViewById<ConstraintLayout>(R.id.chat_row_background)
+                        .setBackgroundColor(Color.parseColor("#e6e3e3"))
+                    view.findViewById<TextView>(R.id.username_newfriend_row)
+                        .setTextColor(Color.BLACK)
                 }
             }
         }
@@ -125,43 +162,26 @@ class CreateGroupPage : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot){
                 if(snapshot.exists()) {
                     snapshot.children.forEach {
-                        val userId = it.key
+                        if(it.exists() && !it.child("group").exists()) {
+                            val userId = it.key
 
-                        databaseRef.getReference("/users/${userId}")
-                            .addListenerForSingleValueEvent(object : ValueEventListener {
-                                override fun onDataChange(snapshot: DataSnapshot) {
-                                    if(snapshot.exists() && !snapshot.child("group").exists()) {
+                            databaseRef.getReference("/users/${userId}")
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
                                         val chat = Chat(userId!!, false)
-                                        chat.name = snapshot.child("username").getValue(String::class.java)
-                                        chat.photoURI = snapshot.child("profilePhoto").getValue(String::class.java)
+                                        chat.name = snapshot.child("username")
+                                            .getValue(String::class.java)
+                                        chat.photoURI = snapshot.child("profilePhoto")
+                                            .getValue(String::class.java)
                                         groupAdapter.add(GroupUserItem(chat))
                                     }
-                                }
 
-                                override fun onCancelled(error: DatabaseError) {
+                                    override fun onCancelled(error: DatabaseError) {
 
-                                }
-                            })
-
-                    }
-
-                    groupAdapter.setOnItemClickListener { item, view ->
-                        val userItem = item as GroupUserItem
-                        if (!userItem.selected) {
-                            userItem.selected = true
-                            members.put(userItem.chat.id, true)
-                            view.findViewById<ConstraintLayout>(R.id.chat_row_background)
-                                .setBackgroundColor(Color.parseColor("#504F4F"))
-                            view.findViewById<TextView>(R.id.username_newfriend_row)
-                                .setTextColor(Color.WHITE)
-                        } else {
-                            userItem.selected = false
-                            members.remove(userItem.chat.id)
-                            view.findViewById<ConstraintLayout>(R.id.chat_row_background)
-                                .setBackgroundColor(Color.parseColor("#e6e3e3"))
-                            view.findViewById<TextView>(R.id.username_newfriend_row)
-                                .setTextColor(Color.BLACK)
+                                    }
+                                })
                         }
+
                     }
                 }
             }
@@ -186,15 +206,15 @@ class CreateGroupPage : AppCompatActivity() {
 
     // Stores the group image in the Firebase Storage
     private fun saveNewImage(){
-        val filename = UUID.randomUUID().toString()
+        val groupId = UUID.randomUUID().toString()
         if(newImage == null)            // If the user didn't select any image
-            createGroup("", filename)
+            createGroup("", groupId)
         else {
-            val ref = FirebaseStorage.getInstance().getReference("/Profile Photos/${filename}")
+            val ref = FirebaseStorage.getInstance().getReference("/Profile Photos/$groupId")
 
             ref.putFile(newImage!!).addOnCompleteListener{
                 ref.downloadUrl.addOnCompleteListener {
-                    createGroup(it.toString(), filename)
+                    createGroup(it.toString(), groupId)
                 }
             }.addOnFailureListener {
                 showToast("Failed to save the photo: ${it.message}")
@@ -205,20 +225,25 @@ class CreateGroupPage : AppCompatActivity() {
     // Creates the group with the given image URI
     private fun createGroup(profileImageUri: String, groupId: String){
         group.groupId = groupId
-        group.adminId = auth.uid.toString()
+        group.adminId = uid!!
         group.groupPhoto = profileImageUri
         // Add the group to all the members' chat list
         databaseRef.getReference("/GroupChats/${groupId}").setValue(group).addOnCompleteListener {
             val time = Timestamp.now().seconds
             for(member in members.keys){
+                databaseRef.getReference("/GroupChats/$groupId/members").push().setValue(member)
                 if(member != group.adminId) {
                     val chat = Chat(groupId, true, time)
-                    databaseRef.getReference("/users/${member}/chats/${chat.id}").setValue(chat)
+                    chat.read = false
+                    databaseRef.getReference("/users/$member/chats/${chat.id}").setValue(chat)
                 }
             }
             val chat = Chat(groupId, true, time)
             databaseRef.getReference("/users/${group.adminId}/chats/${chat.id}").setValue(chat)
                 .addOnCompleteListener {
+                    val intent = Intent(this, GroupChatPage::class.java)
+                    intent.putExtra("GROUP_ID", groupId)
+                    startActivity(intent)
                     finish()
                 }
         }
@@ -234,7 +259,8 @@ class CreateGroupPage : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
-                finish()
+                if(!clicked)
+                    finish()
             }
         }
         return super.onOptionsItemSelected(item)

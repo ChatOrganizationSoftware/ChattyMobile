@@ -126,6 +126,8 @@ class NewFriendsPage : AppCompatActivity() {
                             .setValue(chat.id)
                         databaseRef.getReference("/users/${chat.user2}/chats/${chat.user1}/time")
                             .setValue(time)
+                        databaseRef.getReference("/users/${chat.user2}/chats/${chat.user1}/read")
+                            .setValue(false)
 
                         val intent = Intent(view.context, FriendChatPage::class.java)
                         intent.putExtra("CHAT_ID", chat.id)

@@ -54,6 +54,20 @@ class FriendChatPage : AppCompatActivity() {
             setTheme(R.style.Theme_Chatty_Light)  // Önceden tanımlanmış aydınlık tema
         }
 
+        databaseRef.getReference("/users/$uid")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists()){
+                        startActivity(Intent(this@FriendChatPage, LoginPage::class.java))
+
+                        finishAffinity()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.friend_chat_page)
 
@@ -90,10 +104,10 @@ class FriendChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
-        databaseRef.getReference("/IndividualChats/$chatId/deleted")
+        databaseRef.getReference("/IndividualChats/$chatId")
             .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if(snapshot.exists())
+                    if(!snapshot.exists())
                         finish()
                 }
 
@@ -101,35 +115,24 @@ class FriendChatPage : AppCompatActivity() {
                 }
             })
 
-        databaseRef.getReference("/IndividualChats/$chatId")
-            .addListenerForSingleValueEvent(object: ValueEventListener{
+        databaseRef.getReference("/users/$friendId")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if(snapshot.exists()) {
-                        chat = snapshot.getValue(IndividualChat::class.java)
-
-                        databaseRef.getReference("/users/$friendId")
-                            .addListenerForSingleValueEvent(object : ValueEventListener {
-                            override fun onDataChange(snapshot: DataSnapshot) {
-                                if(snapshot.exists()) {
-
-                                    chatName.text = snapshot.child("username").getValue(String::class.java)
-                                    val image = snapshot.child("profilePhoto").getValue(String::class.java)
-                                    if (image != "") {
-                                        Picasso.get().load(image).into(friendChatProfilePhoto)
-                                    }
-                                }
-                            }
-
-                            override fun onCancelled(error: DatabaseError) {
-                                // Handle any errors that occur while fetching data
-                            }
-                        })
+                        chatName.text = snapshot.child("username").getValue(String::class.java)
+                        val image = snapshot.child("profilePhoto").getValue(String::class.java)
+                        if (image != "")
+                            Picasso.get().load(image).into(friendChatProfilePhoto)
                     }
+                    else
+                        finish()
                 }
 
                 override fun onCancelled(error: DatabaseError) {
+                // Handle any errors that occur while fetching data
                 }
             })
+
         listenMessages(chatId)
 
         // Go to user's profile page
@@ -147,15 +150,14 @@ class FriendChatPage : AppCompatActivity() {
         sendIcon.setOnClickListener{
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
+                enteredMessage.setText("")
                 val ref = databaseRef.getReference("/IndividualChats/${chatId}/Messages").push()
-                val message = IndividualMessage( ref.key!!, text, null, uid!!)
+                val message = IndividualMessage( ref.key!!, text, uid!!)
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now().seconds
                     databaseRef.getReference("/users/$friendId/chats/$uid/read").setValue(false)
                     databaseRef.getReference("/users/$friendId/chats/$uid/time").setValue(time)
                     databaseRef.getReference("/users/$uid/chats/$friendId/time").setValue(time)
-
-                    enteredMessage.setText("")
                 }
             }
         }
@@ -175,7 +177,6 @@ class FriendChatPage : AppCompatActivity() {
                     val message = IndividualMessage()
                     message.message = snapshot.child("message").getValue(String::class.java)
                     message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
-                    message.photoURI = snapshot.child("photoURI").getValue(String::class.java)
                     message.id = snapshot.key.toString()
 
                     if (uid == message.senderId) {

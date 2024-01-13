@@ -21,7 +21,9 @@ import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.getValue
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
@@ -34,12 +36,14 @@ class GroupChatPage : AppCompatActivity() {
     private lateinit var friendChatProfilePhoto: CircleImageView
     private lateinit var sendIcon: ImageView
     private lateinit var chatName: TextView
-    private var group = Group()
+    private var members : List<String>? = null
+    private var memberNames : HashMap<String, String>? = null
     private lateinit var groupId: String
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
     private var listened = false
+    private lateinit var admin : String
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -55,7 +59,7 @@ class GroupChatPage : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.group_chat_page)
 
-        groupId = intent.getStringExtra(NewFriendsPage.USER_KEY)!!
+        groupId = intent.getStringExtra("GROUP_ID")!!
 
         databaseRef.getReference("/users/$uid/chats/$groupId/read")
             .addValueEventListener(object: ValueEventListener{
@@ -65,7 +69,6 @@ class GroupChatPage : AppCompatActivity() {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
                 }
             })
 
@@ -88,55 +91,126 @@ class GroupChatPage : AppCompatActivity() {
 
         recyclerChatLog.adapter = groupAdapter
 
-        // Gets the group information from the firebase
-        databaseRef.getReference("/GroupChats/${groupId}")
-            .addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if(snapshot.child("deleted").exists())
-                    finish()
-                // Parse the user data from snapshot and update the UI
-                group = snapshot.getValue(Group::class.java)!!
-
-                if(!group.members[uid]!!)
-                    finish()
-                var i = 0
-
-                for(mem in group.members.keys){
-                    databaseRef.getReference("/users/$mem/username")
-                        .addListenerForSingleValueEvent(object : ValueEventListener{
-                            override fun onDataChange(snapshot: DataSnapshot) {
-                                group.currentMembers.put(mem, snapshot.getValue(String::class.java)!!)
-                                i++
-                                if(i == group.members.keys.size){
-                                    if(!listened) {
-                                        listened = true
-                                        listenMessages()
-                                    }
-                                }
-                            }
-
-                            override fun onCancelled(error: DatabaseError) {
-                                TODO("Not yet implemented")
-                            }
-                    })
+        databaseRef.getReference("/GroupChats/$groupId")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists())
+                        finish()
                 }
-                if(group.groupPhoto != "")
-                    Picasso.get().load(group.groupPhoto).into(friendChatProfilePhoto)
-                chatName.text = group.name
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-                // Handle any errors that occur while fetching data
-            }
-        })
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        // Gets the group information from the firebase
+        databaseRef.getReference("/GroupChats/${groupId}/name")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        chatName.text = snapshot.getValue(String::class.java)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        // Gets the group information from the firebase
+        databaseRef.getReference("/GroupChats/${groupId}/adminId")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        admin = snapshot.getValue(String::class.java).toString()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        databaseRef.getReference("/GroupChats/${groupId}/groupPhoto")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val image = snapshot.getValue(String::class.java)
+                        if(image != "")
+                            Picasso.get().load(image).into(friendChatProfilePhoto)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+
+        databaseRef.getReference("/GroupChats/$groupId/members")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(snapshot.exists()) {
+                        val genericType = object : GenericTypeIndicator<HashMap< String,String>>() {}
+                        members = snapshot.getValue(genericType)?.values?.toMutableList()
+                        if (members != null) {
+                            memberNames = hashMapOf()
+                            if (!members!!.contains(uid))
+                                finish()
+
+                            databaseRef.getReference("/GroupChats/$groupId/prevMembers")
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        if (snapshot.exists()) {
+                                            val genericType = object :
+                                                GenericTypeIndicator<HashMap<String, String>>() {}
+                                            memberNames = snapshot.getValue(genericType)
+                                        }
+
+                                        var i = 0
+                                        for (mem in members!!) {
+                                            databaseRef.getReference("/users/$mem/username")
+                                                .addListenerForSingleValueEvent(object :
+                                                    ValueEventListener {
+                                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                                        if (snapshot.exists()) {
+                                                            memberNames?.put(
+                                                                mem,
+                                                                snapshot.getValue(String::class.java)!!
+                                                            )
+                                                        }
+                                                        i++
+                                                        if (i == members!!.size) {
+                                                            if (!listened) {
+                                                                listened = true
+                                                                listenMessages()
+                                                            }
+                                                        }
+                                                    }
+
+                                                    override fun onCancelled(error: DatabaseError) {
+                                                    }
+                                                })
+                                        }
+                                    }
+
+                                    override fun onCancelled(error: DatabaseError) {
+                                    }
+                                })
+                        }
+                    }
+                    else{
+                        finish()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
 
         friendChatProfilePhoto.setOnClickListener {
-            if (group.adminId == uid) {
+            if (admin == uid) {
                 enteredMessage.clearFocus() // Clear focus from EditText
                 val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
                 val intent = Intent(this, GroupAdminProfilePage::class.java)
-                intent.putExtra("GROUP_ID", group.groupId)
+                intent.putExtra("GROUP_ID", groupId)
                 startActivity(intent)
             }
             else {
@@ -146,7 +220,7 @@ class GroupChatPage : AppCompatActivity() {
                 inputMethodManager.hideSoftInputFromWindow(enteredMessage.windowToken, 0)
 
                 val intent = Intent(this, GroupProfilePage::class.java)
-                intent.putExtra("GROUP_ID", group.groupId)
+                intent.putExtra("GROUP_ID", groupId)
                 startActivity(intent)
             }
         }
@@ -154,16 +228,16 @@ class GroupChatPage : AppCompatActivity() {
         sendIcon.setOnClickListener{
             val text = enteredMessage.text.toString().trimEnd()
             if(text!="") {
+                enteredMessage.setText("")
                 val ref = databaseRef.getReference("/GroupChats/${groupId}/Messages").push()
 
-                val message = IndividualMessage( ref.key!!, text, null, uid!!)
+                val message = IndividualMessage( ref.key!!, text, uid!!)
                 ref.setValue(message).addOnSuccessListener {
                     val time = Timestamp.now().seconds
-                    for(member in group.members.keys){
-                        databaseRef.getReference("/users/${member}/chats/${group.groupId}/time").setValue(time)
-                        databaseRef.getReference("/users/${member}/chats/${group.groupId}/read").setValue(false)
+                    for(member in members!!){
+                        databaseRef.getReference("/users/$member/chats/$groupId/time").setValue(time)
+                        databaseRef.getReference("/users/$member/chats/$groupId/read").setValue(false)
                     }
-                    enteredMessage.setText("")
                 }
             }
         }
@@ -177,38 +251,34 @@ class GroupChatPage : AppCompatActivity() {
     private fun listenMessages(){
         databaseRef.getReference("/GroupChats/${groupId}/Messages")
             .addChildEventListener(object: ChildEventListener{
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val message = snapshot.getValue(IndividualMessage::class.java)
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    val message = snapshot.getValue(IndividualMessage::class.java)
 
-                if(message == null)
-                    showToast("NULL")
-                else {
-                    if (uid == message.senderId) {
-                        groupAdapter.add(FriendChatToItem(message.message!!))
-                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                    } else {
-                        val sender = group.currentMembers[message.senderId]
-                        groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
+                    if(message == null)
+                        showToast("NULL")
+                    else {
+                        if (uid == message.senderId) {
+                            groupAdapter.add(FriendChatToItem(message.message!!))
+                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                        } else {
+                            val sender = memberNames?.get(message.senderId)
+                            groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
+                        }
                     }
                 }
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-            }
+                override fun onCancelled(error: DatabaseError) {
+                }
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-            }
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                }
 
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-            }
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                }
 
-            override fun onChildRemoved(snapshot: DataSnapshot) {
-            }
-        })
-    }
-
-    companion object{
-        const val USER_KEY = "USER_KEY"
+                override fun onChildRemoved(snapshot: DataSnapshot) {
+                }
+            })
     }
 
 

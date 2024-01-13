@@ -27,7 +27,7 @@ class FriendProfilePage : AppCompatActivity() {
     private var chatId: String? = null
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
-    private var deleted = false
+    private var clicked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -49,8 +49,10 @@ class FriendProfilePage : AppCompatActivity() {
         databaseRef.getReference("/IndividualChats/$chatId")
             .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if(snapshot.child("deleted").exists() && !deleted){
-                        finish()
+                    if(!snapshot.exists()){
+                        startActivity(Intent(this@FriendProfilePage, MainPage::class.java))
+
+                        finishAffinity()
                     }
                 }
 
@@ -68,6 +70,20 @@ class FriendProfilePage : AppCompatActivity() {
         visibility = findViewById(R.id.visibilityText)
         blockButton = findViewById(R.id.blockButton)
         removeChatButton = findViewById(R.id.deleteChat)
+
+        databaseRef.getReference("/users/$uid")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists()){
+                        startActivity(Intent(this@FriendProfilePage, LoginPage::class.java))
+
+                        finishAffinity()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
 
         databaseRef.getReference("/users/${uid}/username")
             .addListenerForSingleValueEvent(object: ValueEventListener{
@@ -98,40 +114,42 @@ class FriendProfilePage : AppCompatActivity() {
             })
 
         removeChatButton.setOnClickListener {
-            deleted = true
-            databaseRef.getReference("/users/$uid/friends/$userId").removeValue()
-            databaseRef.getReference("/users/$userId/friends/$uid").removeValue()
-            databaseRef.getReference("/users/$userId/chats/$chatId").removeValue()
-            databaseRef.getReference("/users/$userId/notifications").push().setValue("{$currentUser} has removed your chat.")
+            if(!clicked) {
+                clicked = true
+                databaseRef.getReference("/users/$userId/chats/$uid").removeValue()
+                databaseRef.getReference("/users/$userId/notifications").push()
+                    .setValue("{$currentUser} has removed your chat.")
 
 
-            databaseRef.getReference("/users/$uid/chats/$userId")
-                .removeValue().addOnCompleteListener {
-                    databaseRef.getReference("/IndividualChats/$chatId").removeValue()
-                    startActivity(Intent(this, MainPage::class.java))
+                databaseRef.getReference("/users/$uid/chats/$userId")
+                    .removeValue().addOnCompleteListener {
+                        databaseRef.getReference("/IndividualChats/$chatId").removeValue()
+                        startActivity(Intent(this, MainPage::class.java))
 
-                    finishAffinity()
-                }
+                        finishAffinity()
+                    }
+            }
         }
 
         blockButton.setOnClickListener {
-            deleted = true
-            databaseRef.getReference("/users/$uid/block/$userId").setValue(userId)
-            databaseRef.getReference("/users/$userId/blockedBy/$uid").setValue(uid)
+            if(!clicked) {
+                clicked = true
+                databaseRef.getReference("/users/$uid/block/$userId").setValue(userId)
+                databaseRef.getReference("/users/$userId/blockedBy/$uid").setValue(uid)
 
-            databaseRef.getReference("/users/$uid/friends/$userId").removeValue()
-            databaseRef.getReference("/users/$userId/friends/$uid").removeValue()
-            databaseRef.getReference("/users/$userId/chats/$chatId").removeValue()
-            databaseRef.getReference("/users/$userId/notifications").push().setValue("{$currentUser} has blocked you.")
+                databaseRef.getReference("/users/$userId/chats/$uid").removeValue()
+                databaseRef.getReference("/users/$userId/notifications").push()
+                    .setValue("{$currentUser} has blocked you.")
 
-            databaseRef.getReference("/users/$uid/chats/$userId")
-                .removeValue().addOnCompleteListener {
-                    databaseRef.getReference("/IndividualChats/$chatId").removeValue()
-                    startActivity(Intent(this, MainPage::class.java))
+                databaseRef.getReference("/users/$uid/chats/$userId")
+                    .removeValue().addOnCompleteListener {
+                        databaseRef.getReference("/IndividualChats/$chatId").removeValue()
+                        startActivity(Intent(this, MainPage::class.java))
 
-                    finishAffinity()
-                }
+                        finishAffinity()
+                    }
             }
+        }
     }
 
 
@@ -144,7 +162,8 @@ class FriendProfilePage : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId){
             android.R.id.home -> {
-                finish()
+                if(!clicked)
+                    finish()
             }
         }
         return super.onOptionsItemSelected(item)

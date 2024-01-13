@@ -1,5 +1,6 @@
 package com.example.chatty
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
@@ -13,6 +14,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
 import com.squareup.picasso.Picasso
@@ -22,7 +24,6 @@ import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
 
 class GroupProfilePage : AppCompatActivity() {
-    private var group = Group()
     private lateinit var membersRecyclerView: RecyclerView
     private lateinit var nameField: TextView
     private lateinit var aboutField: TextView
@@ -31,6 +32,10 @@ class GroupProfilePage : AppCompatActivity() {
     private val databaseRef = FirebaseDatabase.getInstance()
     private lateinit var adminView: RecyclerView
     private var adminAdapter = GroupAdapter<GroupieViewHolder>()
+    private var members : MutableList<String>? = null
+    private lateinit var admin : String
+    private val uid = FirebaseAuth.getInstance().uid
+    private var username : String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -63,39 +68,13 @@ class GroupProfilePage : AppCompatActivity() {
         adminView.adapter = adminAdapter
 
         // Gets the group information from the firebase
-        val database = databaseRef.getReference("/GroupChats/${groupId}")
-        database.addValueEventListener(object : ValueEventListener {
+        databaseRef.getReference("/GroupChats/${groupId}")
+            .addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if(snapshot.child("deleted").exists())
-                    finish()
-                // Parse the user data from snapshot and update the UI
-                group = snapshot.getValue(Group::class.java)!!
-
-                if(!group.members[FirebaseAuth.getInstance().uid]!!)
-                    finish()
-
-                var i = 0
-                for(mem in group.members.keys){
-                    databaseRef.getReference("/users/$mem/username")
-                        .addListenerForSingleValueEvent(object : ValueEventListener{
-                            override fun onDataChange(snapshot: DataSnapshot) {
-                                group.currentMembers.put(mem, snapshot.getValue(String::class.java)!!)
-                                i++
-                                if(i == group.members.keys.size){
-                                    fetchMembers()
-                                }
-                            }
-
-                            override fun onCancelled(error: DatabaseError) {
-                            }
-                        })
+                if(!snapshot.exists()) {
+                    startActivity(Intent(this@GroupProfilePage, MainPage::class.java))
+                    finishAffinity()
                 }
-                if(group.groupPhoto != "")
-                    Picasso.get().load(group.groupPhoto).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
-
-                nameField.text = group.name
-                aboutField.text = group.about
-
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -103,54 +82,137 @@ class GroupProfilePage : AppCompatActivity() {
             }
         })
 
+        databaseRef.getReference("/users/$uid/username")
+            .addValueEventListener(object :ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists()){
+                        FirebaseAuth.getInstance().signOut()
+                        startActivity(Intent(this@GroupProfilePage, LoginPage::class.java))
+                        finishAffinity()
+                    }
+                    else{
+                        username = snapshot.getValue(String::class.java)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        // Gets the group information from the firebase
+        databaseRef.getReference("/GroupChats/${groupId}/name")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        nameField.text = snapshot.getValue(String::class.java)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        // Gets the group information from the firebase
+        databaseRef.getReference("/GroupChats/${groupId}/adminId")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        admin = snapshot.getValue(String::class.java).toString()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        databaseRef.getReference("/GroupChats/${groupId}/groupPhoto")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val image = snapshot.getValue(String::class.java)
+                        if(image != "")
+                            Picasso.get().load(image).into(findViewById<CircleImageView>(R.id.friend_profile_photo))
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        databaseRef.getReference("/GroupChats/${groupId}/about")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        aboutField.text = snapshot.getValue(String::class.java)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        databaseRef.getReference("/GroupChats/$groupId/members")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val genericType = object : GenericTypeIndicator<HashMap< String,String>>() {}
+                    members = snapshot.getValue(genericType)?.values?.toMutableList()
+                    if(members != null) {
+                        if (!members!!.contains(uid)){
+                            startActivity(Intent(this@GroupProfilePage, MainPage::class.java))
+                            finishAffinity()
+                        }
+
+                        fetchMembers()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
         leaveGroupButton.setOnClickListener {
-            val uid = FirebaseAuth.getInstance().uid
-            for(mem in group.members){
-                if(!mem.value)
-                    group.members.remove(mem.key)
-            }
-            databaseRef.getReference("/users/$uid")
-                .addListenerForSingleValueEvent(object: ValueEventListener{
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        group.members.remove(uid)
-                        if(group.members.size <= 1){
+                        members!!.remove(uid)
+                        if(members!!.size <= 1){
                             FirebaseStorage.getInstance().getReference("/Profile Photos/$groupId").delete()
-                            for(mem in group.members.keys){
-                                if(group.members[mem] == true) {
+                            for(mem in members!!){
                                     databaseRef.getReference("/users/$mem/chats/$groupId")
                                         .removeValue()
                                         .addOnSuccessListener {
                                             databaseRef.getReference("/users/$mem/notifications")
                                                 .push()
-                                                .setValue("{${group.name}} is closed.")
+                                                .setValue("{${nameField.text}} is closed.")
                                         }
-                                }
                             }
 
-                            databaseRef.getReference("/GroupChats/$groupId/deleted").setValue(true)
-                                .addOnCompleteListener {
-                                    databaseRef.getReference("/users/$uid/chats/$groupId").removeValue().addOnSuccessListener {
-                                        finish()
+                            databaseRef.getReference("/users/$uid/chats/$groupId").removeValue().addOnCompleteListener {
+                                databaseRef.getReference("/GroupChats/$groupId").removeValue()
+
+                                startActivity(Intent(this@GroupProfilePage, MainPage::class.java))
+                                finishAffinity()
+                            }
+                        }
+                        else {
+                            val query = databaseRef.getReference("/GroupChats/$groupId/members").orderByValue().equalTo(uid)
+                            query.addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(snapshot: DataSnapshot) {
+                                    for (childSnapshot in snapshot.children) {
+                                        // Remove the user from the members list
+                                        childSnapshot.ref.removeValue()
                                     }
                                 }
 
-                        }
-                        else {
-                            val username = snapshot.child("username").getValue(String::class.java)
-                            databaseRef.getReference("/GroupChats/$groupId/members/$uid")
-                                .removeValue()
+                                override fun onCancelled(error: DatabaseError) {
+                                    // Handle the error
+                                }
+                            })
                             databaseRef.getReference("/GroupChats/$groupId/prevMembers/$uid")
                                 .setValue(username)
                             databaseRef.getReference("/users/$uid/chats/$groupId").removeValue()
-                                .addOnSuccessListener {
-                                    finish()
+                                .addOnCompleteListener {
+                                    startActivity(Intent(this@GroupProfilePage, MainPage::class.java))
+                                    finishAffinity()
                                 }
                         }
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {
-                    }
-                })
         }
     }
 
@@ -160,14 +222,13 @@ class GroupProfilePage : AppCompatActivity() {
 
     private fun fetchMembers(){
         groupAdapter.clear()
-        for(member in group.members) {
-            if (member.value) {
-                databaseRef.getReference("/users/${member.key}")
+        for(member in members!!) {
+                databaseRef.getReference("/users/$member")
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             // Parse the user data from snapshot and update the UI
                             val user = snapshot.getValue(User::class.java)!!
-                            if(user.userId == group.adminId){
+                            if(user.userId == admin){
                                 if(adminView.childCount == 0){
                                     adminAdapter.add(GroupMemberItem(user))
                                 }
@@ -181,7 +242,7 @@ class GroupProfilePage : AppCompatActivity() {
                         // Handle any errors that occur while fetching data
                         }
                     })
-            }
+
         }
         groupAdapter.setOnItemClickListener { item, view ->
 

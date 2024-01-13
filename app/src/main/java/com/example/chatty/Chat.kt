@@ -1,7 +1,7 @@
 package com.example.chatty
 
 
-class Chat(var id: String, var group: Boolean) {
+class Chat(var id: String, var group: Boolean = false) {
     var read: Boolean = true
     var name: String? = null
     var photoURI: String? = null
