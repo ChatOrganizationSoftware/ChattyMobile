@@ -1,5 +1,6 @@
 package com.example.chatty
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
@@ -51,7 +52,16 @@ class SettingsPage: AppCompatActivity() {
         deleteAccountSettings = findViewById(R.id.deleteAccountSettings)
 
         themeSettings.setOnClickListener {
-            toggleTheme()
+            AlertDialog.Builder(this)
+                .setTitle("Choose Theme")
+                .setMessage("Select a theme")
+                .setPositiveButton("Dark") { _, _ ->
+                    toggleTheme(true)
+                }
+                .setNegativeButton("Light") { _, _ ->
+                    toggleTheme(false)
+                }
+                .show()
         }
 
         databaseRef.getReference("/users/$uid")
@@ -96,111 +106,131 @@ class SettingsPage: AppCompatActivity() {
                 }
             })
 
-        deleteAccountSettings.setOnClickListener{
-            if(chats.size != 0) {
-                for (chat in chats) {
-                    if (!chat.group) {
-                        databaseRef.getReference("/IndividualChats/${chat.id}")
-                            .addListenerForSingleValueEvent(object : ValueEventListener {
-                                override fun onDataChange(snapshot: DataSnapshot) {
-                                    if(snapshot.exists()) {
-                                        val indChat = snapshot.getValue(IndividualChat::class.java)
-                                        var friend = indChat!!.user1
-                                        if (uid == indChat.user1)
-                                            friend = indChat.user2
+        deleteAccountSettings.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Delete Account")
+                .setMessage("Are you sure you want to delete your account?")
+                .setPositiveButton("Yes") { dialog, which ->
 
-                                        databaseRef.getReference("/users/${friend}/chats/$uid")
-                                            .removeValue()
-                                        databaseRef.getReference("/users/${friend}/notifications")
-                                            .push()
-                                            .setValue("{$username} has closed his/her account.")
-                                        databaseRef.getReference("/IndividualChats/${indChat.id}").removeValue()
-                                    }
-                                }
+                    if(chats.size != 0) {
+                        for (chat in chats) {
+                            if (!chat.group) {
+                                databaseRef.getReference("/IndividualChats/${chat.id}")
+                                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                                        override fun onDataChange(snapshot: DataSnapshot) {
+                                            if(snapshot.exists()) {
+                                                val indChat = snapshot.getValue(IndividualChat::class.java)
+                                                var friend = indChat!!.user1
+                                                if (uid == indChat.user1)
+                                                    friend = indChat.user2
 
-                                override fun onCancelled(error: DatabaseError) {
-                                }
-                            })
-                    }
-                    else {
-                        databaseRef.getReference("/GroupChats/${chat.id}")
-                            .addListenerForSingleValueEvent(object : ValueEventListener {
-                                override fun onDataChange(snapshot: DataSnapshot) {
-                                    if(snapshot.exists()) {
-                                        val name = snapshot.child("name").getValue(String::class.java)
-                                        val genericType = object : GenericTypeIndicator<HashMap<String, String>>() {}
-                                        val members = snapshot.child("/members").getValue(genericType)?.values?.toMutableList()
-                                        val admin = snapshot.child("/adminId").getValue(String::class.java)
-                                        if (members != null) {
-                                            members.remove(uid)
-                                            if (uid != admin) {
-                                                if (members.size > 1) {
-                                                    databaseRef.getReference("/GroupChats/${chat.id}/members/$uid")
-                                                        .removeValue()
-                                                    databaseRef.getReference("/GroupChats/${chat.id}/prevMembers/$uid")
-                                                        .setValue(username)
-                                                }
-                                                else {
-                                                    FirebaseStorage.getInstance()
-                                                        .getReference("/Profile Photos/${chat.id}")
-                                                        .delete()
-                                                    for (mem in members) {
-                                                        databaseRef.getReference("/users/$mem/chats/${chat.id}")
-                                                            .removeValue()
-                                                            .addOnSuccessListener {
-                                                                databaseRef.getReference("/users/$mem/notifications")
-                                                                    .push()
-                                                                    .setValue("{$name} is closed.")
-                                                            }
-                                                    }
-                                                    databaseRef.getReference("/GroupChats/${chat.id}").removeValue()
-                                                }
-                                            }
-                                            else {
-                                                FirebaseStorage.getInstance()
-                                                    .getReference("/Profile Photos/${chat.id}")
-                                                    .delete()
-                                                for (mem in members) {
-                                                    databaseRef.getReference("/users/$mem/chats/${chat.id}")
-                                                        .removeValue()
-                                                        .addOnSuccessListener {
-                                                            databaseRef.getReference("/users/$mem/notifications")
-                                                                .push()
-                                                                .setValue("{$name} is closed.")
-                                                        }
-                                                }
-                                                databaseRef.getReference("/GroupChats/${chat.id}").removeValue()
+                                                databaseRef.getReference("/users/${friend}/chats/$uid")
+                                                    .removeValue()
+                                                databaseRef.getReference("/users/${friend}/notifications")
+                                                    .push()
+                                                    .setValue("{$username} has closed his/her account.")
+                                                databaseRef.getReference("/IndividualChats/${indChat.id}").removeValue()
                                             }
                                         }
-                                    }
-                                }
 
-                                override fun onCancelled(error: DatabaseError) {
-                                }
-                            })
+                                        override fun onCancelled(error: DatabaseError) {
+                                        }
+                                    })
+                            }
+                            else {
+                                databaseRef.getReference("/GroupChats/${chat.id}")
+                                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                                        override fun onDataChange(snapshot: DataSnapshot) {
+                                            if(snapshot.exists()) {
+                                                val name = snapshot.child("name").getValue(String::class.java)
+                                                val genericType = object : GenericTypeIndicator<HashMap<String, String>>() {}
+                                                val members = snapshot.child("/members").getValue(genericType)?.values?.toMutableList()
+                                                val admin = snapshot.child("/adminId").getValue(String::class.java)
+                                                if (members != null) {
+                                                    members.remove(uid)
+                                                    if (uid != admin) {
+                                                        if (members.size > 1) {
+                                                            databaseRef.getReference("/GroupChats/${chat.id}/members/$uid")
+                                                                .removeValue()
+                                                            databaseRef.getReference("/GroupChats/${chat.id}/prevMembers/$uid")
+                                                                .setValue(username)
+                                                        }
+                                                        else {
+                                                            FirebaseStorage.getInstance()
+                                                                .getReference("/Profile Photos/${chat.id}")
+                                                                .delete()
+                                                            for (mem in members) {
+                                                                databaseRef.getReference("/users/$mem/chats/${chat.id}")
+                                                                    .removeValue()
+                                                                    .addOnSuccessListener {
+                                                                        databaseRef.getReference("/users/$mem/notifications")
+                                                                            .push()
+                                                                            .setValue("{$name} is closed.")
+                                                                    }
+                                                            }
+                                                            databaseRef.getReference("/GroupChats/${chat.id}").removeValue()
+                                                        }
+                                                    }
+                                                    else {
+                                                        FirebaseStorage.getInstance()
+                                                            .getReference("/Profile Photos/${chat.id}")
+                                                            .delete()
+                                                        for (mem in members) {
+                                                            databaseRef.getReference("/users/$mem/chats/${chat.id}")
+                                                                .removeValue()
+                                                                .addOnSuccessListener {
+                                                                    databaseRef.getReference("/users/$mem/notifications")
+                                                                        .push()
+                                                                        .setValue("{$name} is closed.")
+                                                                }
+                                                        }
+                                                        databaseRef.getReference("/GroupChats/${chat.id}").removeValue()
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        override fun onCancelled(error: DatabaseError) {
+                                        }
+                                    })
+                            }
+                        }
                     }
-                }
-            }
 
-            FirebaseDatabase.getInstance().getReference("/users/$uid").removeValue()
-            FirebaseAuth.getInstance().currentUser?.delete()
-                ?.addOnCompleteListener {
-                    FirebaseAuth.getInstance().signOut()
+                    FirebaseDatabase.getInstance().getReference("/users/$uid").removeValue()
+                    FirebaseAuth.getInstance().currentUser?.delete()
+                        ?.addOnCompleteListener {
+                            FirebaseAuth.getInstance().signOut()
 
-                    val intent = Intent(this@SettingsPage, LoginPage::class.java)
-                    startActivity(intent)
-                    finishAffinity()
+                            val intent = Intent(this@SettingsPage, LoginPage::class.java)
+                            startActivity(intent)
+                            finishAffinity()
+                        }
+
+
                 }
+                .setNegativeButton("No", null)
+                .show()
         }
+
     }
 
-    private fun toggleTheme() {
+    private fun toggleTheme(isDarkThemeSelected: Boolean) {
         val sharedPreferences = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
         val isDarkTheme = sharedPreferences.getBoolean("DARK_THEME", false)
 
-        sharedPreferences.edit().putBoolean("DARK_THEME", !isDarkTheme).apply()
+        // Eğer kullanıcının seçtiği tema mevcut temadan farklıysa, değişikliği yap ve Toast mesajı göster
+        if (isDarkTheme != isDarkThemeSelected) {
+            sharedPreferences.edit().putBoolean("DARK_THEME", isDarkThemeSelected).apply()
 
-        recreate()  // Aktiviteyi yeniden başlatarak temayı uygula
+            if (isDarkThemeSelected) {
+                Toast.makeText(this, "Dark mode enabled", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Light mode enabled", Toast.LENGTH_SHORT).show()
+            }
+
+            recreate() // Aktiviteyi yeniden başlatarak temayı uygula
+        }
     }
 
     private fun showToast(message: String) {

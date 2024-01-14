@@ -13,6 +13,7 @@
         android:background="@drawable/roundstyle_message"
         android:maxWidth="240dp"
         android:padding="10dp"
+        android:textColor="#4C4C4C"
         android:textSize="18sp"
         app:layout_constraintStart_toStartOf="@+id/chat_row_username"
         app:layout_constraintTop_toBottomOf="@+id/chat_row_username" />
@@ -22,7 +23,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:textColor="@color/white"
+        android:textColor="#4C4C4C"
         android:textSize="20sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />

@@ -6,7 +6,7 @@
     <color name="light_primary">#FFFFFF</color>
     <color name="light_primary_variant">#EEEEEE</color>
     <color name="light_on_primary">#000000</color>
-    <color name="orange">#E5E2E2</color>
+    <color name="orange">#FF5722</color>
 
     <!-- Dark theme colors -->
     <color name="dark_primary">#000000</color>
@@ -22,4 +22,5 @@
 
     <!-- Karanlık tema için arka plan rengi -->
     <color name="dark_text">#000000</color> <!-- Siyah -->
+
 </resources>
