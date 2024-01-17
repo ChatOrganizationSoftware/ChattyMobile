@@ -5,18 +5,20 @@
         <!-- Common styles for both light and dark themes -->
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
+        <item name="android:statusBarColor">@color/orange</item>
     </style>
 
     <style name="Theme.Chatty.Light" parent="Base.Theme.Chatty">
         <item name="android:windowBackground">@color/light_background</item>
         <item name="android:textColor">@color/dark_text</item>
+        <item name="android:statusBarColor">@color/orange</item>
         <!-- Diğer stil özellikleri -->
     </style>
 
     <style name="Theme.Chatty.Dark" parent="Base.Theme.Chatty">
         <item name="android:windowBackground">@color/dark_background</item>
         <item name="android:textColor">@color/light_text</item>
-        <item name="android:editTextBackground">@color/orange</item>
+        <item name="android:statusBarColor">@color/orange</item>
         <!-- Diğer stil özellikleri -->
     </style>
 

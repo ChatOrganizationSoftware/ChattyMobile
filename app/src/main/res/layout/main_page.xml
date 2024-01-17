@@ -4,15 +4,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:theme="@style/Theme.Chatty.Light"
     tools:context=".MainPage">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="#f27013"
+        android:background="@color/orange"
         android:elevation="4dp"
-        android:popupTheme="@style/Theme.Chatty.Light"
         android:theme="@style/Theme.Chatty.Light"
         app:titleTextColor="@color/white"
         tools:ignore="MissingConstraints" />
@@ -30,6 +30,7 @@
             android:id="@+id/recyclerviewChats"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:theme="@style/Theme.Chatty.Light"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
         <de.hdodenhof.circleimageview.CircleImageView
@@ -41,6 +42,7 @@
             android:background="@drawable/circle_border"
             android:padding="3dp"
             android:src="@drawable/user_plus_solid"
+            android:theme="@style/Theme.Chatty.Light"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 

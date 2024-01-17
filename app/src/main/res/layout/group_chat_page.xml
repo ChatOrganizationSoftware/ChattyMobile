@@ -11,27 +11,27 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="#f27013"
+        android:background="@color/orange"
         android:elevation="4dp"
         android:gravity="center"
         android:layoutDirection="locale"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:title=""
         tools:ignore="MissingConstraints"
         tools:layout_editor_absoluteX="-60dp"
-        tools:layout_editor_absoluteY="-1dp"
-        app:title="">
+        tools:layout_editor_absoluteY="-1dp">
 
         <de.hdodenhof.circleimageview.CircleImageView
             android:id="@+id/friendChatProfilePhoto"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:layout_gravity="center"
+            android:layout_marginRight="10dp"
             android:src="@drawable/ekran_g_r_nt_s____2023_12_05_20_12_14"
             app:civ_border_color="#d1cfcf"
             app:civ_border_width="2dp"
             tools:layout_editor_absoluteX="240dp"
-            tools:layout_editor_absoluteY="6dp"
-            android:layout_marginRight="10dp"/>
+            tools:layout_editor_absoluteY="6dp" />
 
         <TextView
             android:id="@+id/friend_chat_name"
@@ -50,7 +50,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:background="#74BFDF"
+        android:background="#749FDF"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

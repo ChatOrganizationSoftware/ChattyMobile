@@ -15,6 +15,7 @@
         android:maxWidth="240dp"
         android:padding="10dp"
         android:text=""
+        android:textColor="#4C4C4C"
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
