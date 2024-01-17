@@ -7,14 +7,15 @@
     android:layout_marginBottom="6dp">
 
     <TextView
-        android:id="@+id/textView5"
+        android:id="@+id/textViewFromRow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
         android:background="@drawable/roundstyle_message"
         android:maxWidth="240dp"
         android:padding="10dp"
-        android:text="Message1asddddddddddddddddddasddsadsa"
+        android:text=""
+        android:textColor="#4C4C4C"
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"

@@ -4,20 +4,21 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:theme="@style/Theme.Chatty.Light"
     tools:context=".MainPage">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="#f27013"
+        android:background="@color/orange"
         android:elevation="4dp"
-        android:popupTheme="@style/ThemeOverlay.AppCompat.Light"
-        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        android:theme="@style/Theme.Chatty.Light"
         app:titleTextColor="@color/white"
         tools:ignore="MissingConstraints" />
 
-    <FrameLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/constraintLayout3"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -29,8 +30,23 @@
             android:id="@+id/recyclerviewChats"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:theme="@style/Theme.Chatty.Light"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-    </FrameLayout>
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/createGroupIcon"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_marginStart="30dp"
+            android:layout_marginBottom="30dp"
+            android:background="@drawable/circle_border"
+            android:padding="3dp"
+            android:src="@drawable/user_plus_solid"
+            android:theme="@style/Theme.Chatty.Light"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

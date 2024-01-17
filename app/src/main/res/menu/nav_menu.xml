@@ -3,6 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
 
+    <item android:id="@+id/main_notifications"
+        android:icon="@drawable/bell_solid"
+        android:title=""
+        app:showAsAction="ifRoom" />
+
     <item android:id="@+id/main_new_friends"
         android:icon="@drawable/user_friends_solid"
         android:title=""

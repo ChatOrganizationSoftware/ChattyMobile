@@ -13,16 +13,17 @@ import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.getValue
 import com.google.firebase.storage.FirebaseStorage
 import com.squareup.picasso.Picasso
-import de.hdodenhof.circleimageview.CircleImageView
 import java.util.UUID
 
 class UpdateProfile: AppCompatActivity() {
-    private lateinit var auth: FirebaseAuth
     private lateinit var database: DatabaseReference
 
     private lateinit var editProfilePhoto: ImageView
@@ -38,12 +39,27 @@ class UpdateProfile: AppCompatActivity() {
     private lateinit var cancelButton: Button
 
     private var visibility = "Public"
+    private var uid = FirebaseAuth.getInstance().uid
 
     private lateinit var oldImage: String
     private var newImage: Uri? = null
 
+    private var clicked = false
+
+    private var updates = hashMapOf<String, Any>()
+
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        val isDarkTheme = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
+            .getBoolean("DARK_THEME", false)
+
+        if (isDarkTheme) {
+            setTheme(R.style.Theme_Chatty_Dark)  // Önceden tanımlanmış karanlık tema
+        } else {
+            setTheme(R.style.Theme_Chatty_Light)  // Önceden tanımlanmış aydınlık tema
+        }
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.updateprofile_page)
 
@@ -59,15 +75,27 @@ class UpdateProfile: AppCompatActivity() {
 
         editProfilePhoto = findViewById(R.id.imageEdit)
 
-        auth = FirebaseAuth.getInstance()
+        FirebaseDatabase.getInstance().getReference("users/$uid")
+            .addValueEventListener(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if(!snapshot.exists()){
+                        startActivity(Intent(this@UpdateProfile, LoginPage::class.java))
 
-        val user = FirebaseAuth.getInstance().currentUser!!.uid
-        database = FirebaseDatabase.getInstance().getReference("users/$user")
-        database.get().addOnSuccessListener { documentSnapshot ->
-                if (documentSnapshot.exists()) {
+                        finishAffinity()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        FirebaseDatabase.getInstance().getReference("users/$uid")
+            .addListenerForSingleValueEvent(object: ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists() && !snapshot.child("deleted").exists()) {
                     // Retrieve user data
-                    val userData = documentSnapshot.getValue<User>()!!
-                    oldImage = userData.profilePhoto
+                    val userData = snapshot.getValue(User::class.java)
+                    oldImage = userData!!.profilePhoto
 
                     if(oldImage != "")
                         Picasso.get().load(oldImage).into(editProfilePhoto)     // Replace imageView with your ImageView reference
@@ -82,9 +110,11 @@ class UpdateProfile: AppCompatActivity() {
                     aboutEditText.setText(userData.about)
                 }
             }
-            .addOnFailureListener {
-                showToast("Error accessing the database")
+
+            override fun onCancelled(error: DatabaseError) {
             }
+
+        })
 
         editProfilePhoto.setOnClickListener{
             val intent = Intent(Intent.ACTION_PICK)
@@ -105,11 +135,27 @@ class UpdateProfile: AppCompatActivity() {
         }
 
         cancelButton.setOnClickListener{
-            finish()
+            if(!clicked)
+                finish()
         }
 
         confirmButton.setOnClickListener{
-            saveNewImage()
+            if(!clicked) {
+                updates["username"] = nameEditText.text.toString().trim()
+                updates["about"] = aboutEditText.text.toString().trim()
+                updates["visibility"] = visibility
+
+                if(updates["username"].toString().length > 20 )
+                    showToast("Your name can't be longer than 20 characters")
+                else if(updates["username"].toString().isEmpty())
+                    showToast("You can't leave your name empty")
+                else if(updates["about"].toString().length > 150)
+                    showToast("Your about field can't be longer than 150 characters")
+                else {
+                    clicked = true
+                    saveNewImage()
+                }
+            }
         }
     }
 
@@ -145,13 +191,8 @@ class UpdateProfile: AppCompatActivity() {
     }
 
     private fun saveUpdates(profileImageUri: String){
-        val uid = FirebaseAuth.getInstance().uid
         val ref = FirebaseDatabase.getInstance().getReference("users/$uid")
 
-        var updates = HashMap<String, Any>()
-        updates["username"] = nameEditText.text.toString()
-        updates["about"] = aboutEditText.text.toString()
-        updates["visibility"] = visibility
         if(profileImageUri!="") {
             updates["profilePhoto"] = profileImageUri
         }

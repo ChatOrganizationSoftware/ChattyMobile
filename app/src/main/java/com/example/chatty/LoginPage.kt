@@ -35,12 +35,11 @@ class LoginPage : AppCompatActivity() {
         signUp = findViewById(R.id.signUp)
 
         // Click listener for eye icon to show/hide password
-        loginEye.setOnClickListener{
-            if(!showPassword){
+        loginEye.setOnClickListener {
+            if (!showPassword) {
                 passwordField.transformationMethod = HideReturnsTransformationMethod.getInstance()
                 showPassword = true
-            }
-            else{
+            } else {
                 passwordField.transformationMethod = PasswordTransformationMethod.getInstance()
                 showPassword = false
             }
@@ -85,8 +84,9 @@ class LoginPage : AppCompatActivity() {
                     return@addOnCompleteListener
                 // Login Successful
                 val intent = Intent(this, MainPage::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
+
+                finishAffinity()
             }
             .addOnFailureListener{
                 showToast("Failed to Login: ${it.message}")

@@ -7,7 +7,7 @@
     android:layout_marginBottom="6dp">
 
     <TextView
-        android:id="@+id/textView5"
+        android:id="@+id/textViewToRow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="20dp"
@@ -15,6 +15,7 @@
         android:maxWidth="240dp"
         android:padding="10dp"
         android:text="Message1asddddddddddddddddddasddsadsa"
+        android:textColor="#4C4C4C"
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

@@ -15,8 +15,36 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Chatty"
+        android:theme="@style/Base.Theme.Chatty"
         tools:targetApi="31">
+        <activity
+            android:name=".StartPage"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".NotificationsPage"
+            android:exported="false" />
+        <activity
+            android:name=".GroupUpdatePage"
+            android:exported="false" />
+        <activity
+            android:name=".GroupAdminProfilePage"
+            android:exported="false" />
+        <activity
+            android:name=".GroupProfilePage"
+            android:exported="false" />
+        <activity
+            android:name=".GroupChatPage"
+            android:exported="false"
+            android:parentActivityName=".MainPage" />
+        <activity
+            android:name=".CreateGroupPage"
+            android:exported="false"
+            android:parentActivityName=".MainPage" />
         <activity
             android:name=".FriendProfilePage"
             android:exported="false" />
@@ -24,31 +52,19 @@
             android:name=".NonFriendProfilePage"
             android:exported="false" />
         <activity
-            android:name=".ChatPage"
+            android:name=".FriendChatPage"
             android:exported="false"
             android:parentActivityName=".MainPage" />
         <activity
             android:name=".MainPage"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
         <activity
             android:name=".NewFriendsPage"
             android:exported="false"
             android:parentActivityName=".MainPage" />
         <activity
             android:name=".LoginPage"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
         <activity android:name=".SignupPage" />
         <activity android:name=".EmailVerificationPage" />
         <activity android:name=".ForgotPasswordPage" />
@@ -58,8 +74,9 @@
         <activity
             android:name=".SettingsPage"
             android:parentActivityName=".MainPage" />
-        <activity android:name=".UpdateProfile"
-            android:parentActivityName=".ProfilePage"/>
+        <activity
+            android:name=".UpdateProfile"
+            android:parentActivityName=".ProfilePage" />
     </application>
 
 </manifest>
