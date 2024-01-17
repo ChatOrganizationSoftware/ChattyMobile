@@ -64,6 +64,44 @@ class SettingsPage: AppCompatActivity() {
                 .show()
         }
 
+        fun navigateToChangePasswordPage() {
+            val intent = Intent(this, ChangePasswordPage::class.java)
+            startActivity(intent)
+        }
+
+
+        var auth = FirebaseAuth.getInstance()
+
+
+        fun sendResetEmail() {
+            val user = auth.currentUser
+
+            if (user != null) {
+                auth.sendPasswordResetEmail(user.email!!)
+                    .addOnCompleteListener(this) { task ->
+                        if (task.isSuccessful) {
+                            showToast("Email for resetting password sent to ${user.email}")
+                            navigateToChangePasswordPage()
+                        } else {
+                            showToast("Failed to send reset email: ${task.exception?.message}")
+                        }
+                    }
+            } else {
+                showToast("No user is currently signed in")
+            }
+        }
+
+        changePasswordSettings.setOnClickListener {
+            sendResetEmail()
+        }
+
+
+        changePasswordSettings.setOnClickListener {
+            sendResetEmail()
+        }
+
+
+
         databaseRef.getReference("/users/$uid")
             .addValueEventListener(object: ValueEventListener{
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -246,4 +284,6 @@ class SettingsPage: AppCompatActivity() {
         }
         return super.onOptionsItemSelected(item)
     }
+
+
 }

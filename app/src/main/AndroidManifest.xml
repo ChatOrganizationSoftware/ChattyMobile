@@ -77,6 +77,9 @@
         <activity
             android:name=".UpdateProfile"
             android:parentActivityName=".ProfilePage" />
+        <activity
+            android:name=".ChangePasswordPage"
+            android:parentActivityName=".SettingsPage" />
     </application>
 
 </manifest>
