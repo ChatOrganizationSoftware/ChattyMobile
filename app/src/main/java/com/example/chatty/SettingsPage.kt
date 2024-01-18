@@ -11,7 +11,6 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ValueEventListener
@@ -105,6 +104,10 @@ class SettingsPage: AppCompatActivity() {
                 override fun onCancelled(error: DatabaseError) {
                 }
             })
+
+        changePasswordSettings.setOnClickListener {
+            sendResetEmail()
+        }
 
         deleteAccountSettings.setOnClickListener {
             AlertDialog.Builder(this)
@@ -212,7 +215,25 @@ class SettingsPage: AppCompatActivity() {
                 .setNegativeButton("No", null)
                 .show()
         }
+    }
 
+    private fun sendResetEmail() {
+        val user = FirebaseAuth.getInstance().currentUser
+
+        if (user != null) {
+            FirebaseAuth.getInstance().sendPasswordResetEmail(user.email!!)
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
+                        showToast("Email for resetting password sent to ${user.email}")
+                        val intent = Intent(this, ChangePasswordPage::class.java)
+                        startActivity(intent)
+                    } else {
+                        showToast("Failed to send reset email: ${task.exception?.message}")
+                    }
+                }
+        } else {
+            showToast("No user is currently signed in")
+        }
     }
 
     private fun toggleTheme(isDarkThemeSelected: Boolean) {

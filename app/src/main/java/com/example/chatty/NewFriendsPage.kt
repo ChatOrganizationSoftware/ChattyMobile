@@ -32,7 +32,6 @@ import kotlinx.coroutines.launch
 import java.util.Base64
 import java.util.UUID
 import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
 
 class NewFriendsPage : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView

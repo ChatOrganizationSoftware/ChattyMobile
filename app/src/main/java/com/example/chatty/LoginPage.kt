@@ -11,6 +11,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 class LoginPage : AppCompatActivity() {
     private lateinit var emailField: EditText
@@ -83,10 +84,19 @@ class LoginPage : AppCompatActivity() {
                 if (!task.isSuccessful)
                     return@addOnCompleteListener
                 // Login Successful
-                val intent = Intent(this, MainPage::class.java)
-                startActivity(intent)
 
-                finishAffinity()
+                if(FirebaseAuth.getInstance().currentUser!!.isEmailVerified) {
+                    FirebaseDatabase.getInstance().getReference("/users/${FirebaseAuth.getInstance().uid}/active").setValue(true)
+
+                    val intent = Intent(this, MainPage::class.java)
+                    startActivity(intent)
+                    finish()
+                }
+                else{
+                    val intent = Intent(this, EmailVerificationPage::class.java)
+                    startActivity(intent)
+                }
+
             }
             .addOnFailureListener{
                 showToast("Failed to Login: ${it.message}")

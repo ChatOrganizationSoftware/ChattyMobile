@@ -7,30 +7,34 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 
-class ForgotPasswordPage : AppCompatActivity() {
+class ChangePasswordPage : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
-    private lateinit var emailFieldForgotPasswordPage: EditText
+    private lateinit var emailFieldChangePasswordPage: EditText
+    private lateinit var resetPasswordButton: Button
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.forgotpassword_page)
+        setContentView(R.layout.change_password_page)
 
         auth = FirebaseAuth.getInstance()
 
         // reset password button
-        val resetPasswordButton = findViewById<Button>(R.id.ForgotPasswordButton)
+        resetPasswordButton = findViewById(R.id.resetPasswordButton)
+        emailFieldChangePasswordPage = findViewById(R.id.emailFieldChangePasswordPage)
+
         resetPasswordButton.setOnClickListener {
-            val email = findViewById<EditText>(R.id.emailFieldForgotPasswordPage).text.toString().trim()
+            val email = emailFieldChangePasswordPage.text.toString().trim()
             if (email.isEmpty()) {
                 showToast("Please enter email")
             } else {
                 auth.sendPasswordResetEmail(email)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            showToast("Email sent to $email")
+                            showToast("Email for resetting password sent to $email")
                             finish()
                         } else {
-                            showToast("Email not sent to $email")
+                            showToast("Email for resetting password not sent to $email")
                         }
                     }
             }

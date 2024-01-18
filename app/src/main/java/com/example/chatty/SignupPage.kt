@@ -197,11 +197,32 @@ class SignupPage : AppCompatActivity() {
 
         val user = User(uid!!, nameField.text.toString().trim(), profileImageUri)
         ref.setValue(user)
-
-        val intent = Intent(this, MainPage::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(intent)
+            .addOnCompleteListener {
+                sendVerificationEmail()
+            }
     }
+
+    private fun navigateToEmailVerificationPage() {
+        val intent = Intent(this, EmailVerificationPage::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    private fun sendVerificationEmail() {
+        val auth = FirebaseAuth.getInstance()
+        val user = auth.currentUser
+
+        user?.sendEmailVerification()
+            ?.addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    showToast("Verification email sent to ${user.email}")
+                    navigateToEmailVerificationPage()
+                } else {
+                    showToast("Failed to send verification email: ${task.exception?.message}")
+                }
+            }
+    }
+
 
     // Shows a message on the screen
     private fun showToast(message: String) {

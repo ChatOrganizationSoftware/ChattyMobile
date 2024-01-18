@@ -17,17 +17,11 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.childEvents
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
 import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
 
 class MainPage : AppCompatActivity() {
 
@@ -60,17 +54,6 @@ class MainPage : AppCompatActivity() {
 
                         finishAffinity()
                     }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                }
-            })
-
-        databaseRef.getReference("/users/$uid/active")
-            .addListenerForSingleValueEvent(object: ValueEventListener{
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if(!snapshot.exists())
-                        snapshot.ref.setValue(true)
                 }
 
                 override fun onCancelled(error: DatabaseError) {

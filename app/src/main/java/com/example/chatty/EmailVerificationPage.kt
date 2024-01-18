@@ -1,9 +1,13 @@
 package com.example.chatty
 
 import android.os.Bundle
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.auth.FirebaseAuth
 
 class EmailVerificationPage : AppCompatActivity() {
+
+    private lateinit var auth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -18,5 +22,13 @@ class EmailVerificationPage : AppCompatActivity() {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.emailverification_page)
+
+
+        // return to login page button
+        val returnLoginButton = findViewById<Button>(R.id.returnLoginButtonFromEmailVerification)
+        returnLoginButton.setOnClickListener {
+            finish()
+        }
+
     }
 }
