@@ -12,10 +12,12 @@ import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.childEvents
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
@@ -34,6 +36,7 @@ class MainPage : AppCompatActivity() {
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private var databaseRef = FirebaseDatabase.getInstance()
     private val uid = FirebaseAuth.getInstance().uid
+    private val chats = hashMapOf<String, ChatItem>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -114,77 +117,90 @@ class MainPage : AppCompatActivity() {
 
     private fun displayChats(){
         databaseRef.getReference("/users/$uid/chats").orderByChild("time")
-            .addValueEventListener(object: ValueEventListener{
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if(snapshot.exists()) {
-                    groupAdapter.clear()
-                    for (snap in snapshot.children.reversed()) {
-                        if (snap.exists()) {
-                            val chat = Chat(
-                                snap.child("id").getValue(String::class.java)!!,
-                                snap.child("group").exists()
-                            )
-                            chat.read = snap.child("read").getValue(Boolean::class.java) != false
-                            chat.friendId = snap.key
-                            var chatItem = ChatItem(chat)
-                            groupAdapter.add(chatItem)
-                            if (!chat.group) {
-                                databaseRef.getReference("/users/${chat.friendId}/username")
-                                    .addListenerForSingleValueEvent(object: ValueEventListener{
-                                        override fun onDataChange(snapshot: DataSnapshot) {
-                                            if(snapshot.exists())
-                                                chat.name = snapshot.getValue(String::class.java).toString()
+            .addChildEventListener(object: ChildEventListener{
+                override fun onChildAdded(snap: DataSnapshot, previousChildName: String?) {
+                    if (snap.exists()) {
+                        val chat = Chat(
+                            snap.child("id").getValue(String::class.java)!!,
+                            snap.child("group").exists()
+                        )
+                        chat.read = snap.child("read").getValue(Boolean::class.java) != false
+                        chat.friendId = snap.key
+                        var chatItem = ChatItem(chat)
+                        chats[chat.id] = chatItem
+                        groupAdapter.add(0, chatItem)
+                        if (!chat.group) {
+                            databaseRef.getReference("/users/${chat.friendId}/username")
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        if (snapshot.exists())
+                                            chat.name =
+                                                snapshot.getValue(String::class.java).toString()
 
-                                            chatItem.notifyChanged()
-                                        }
+                                        chatItem.notifyChanged()
+                                    }
 
-                                        override fun onCancelled(error: DatabaseError) {
-                                        }
-                                    })
-                                databaseRef.getReference("/users/${chat.friendId}/profilePhoto")
-                                    .addListenerForSingleValueEvent(object: ValueEventListener{
-                                        override fun onDataChange(snapshot: DataSnapshot) {
-                                            if(snapshot.exists())
-                                                chat.photoURI = snapshot.getValue(String::class.java)
-                                            chatItem.notifyChanged()
-                                        }
+                                    override fun onCancelled(error: DatabaseError) {
+                                    }
+                                })
+                            databaseRef.getReference("/users/${chat.friendId}/profilePhoto")
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        if (snapshot.exists())
+                                            chat.photoURI = snapshot.getValue(String::class.java)
+                                        chatItem.notifyChanged()
+                                    }
 
-                                        override fun onCancelled(error: DatabaseError) {
-                                        }
-                                    })
-                            }
-                            else {
-                                databaseRef.getReference("/GroupChats/${chat.id}/name")
-                                    .addListenerForSingleValueEvent(object: ValueEventListener{
-                                        override fun onDataChange(snapshot: DataSnapshot) {
-                                            if(snapshot.exists())
-                                                chat.name = snapshot.getValue(String::class.java).toString()
-                                            chatItem.notifyChanged()
-                                        }
+                                    override fun onCancelled(error: DatabaseError) {
+                                    }
+                                })
+                        } else {
+                            databaseRef.getReference("/GroupChats/${chat.id}/name")
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        if (snapshot.exists())
+                                            chat.name =
+                                                snapshot.getValue(String::class.java).toString()
+                                        chatItem.notifyChanged()
+                                    }
 
-                                        override fun onCancelled(error: DatabaseError) {
-                                        }
-                                    })
-                                databaseRef.getReference("/GroupChats/${chat.id}/groupPhoto")
-                                    .addListenerForSingleValueEvent(object: ValueEventListener{
-                                        override fun onDataChange(snapshot: DataSnapshot) {
-                                            if(snapshot.exists())
-                                                chat.photoURI = snapshot.getValue(String::class.java)
-                                            chatItem.notifyChanged()
-                                        }
+                                    override fun onCancelled(error: DatabaseError) {
+                                    }
+                                })
+                            databaseRef.getReference("/GroupChats/${chat.id}/groupPhoto")
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        if (snapshot.exists())
+                                            chat.photoURI = snapshot.getValue(String::class.java)
+                                        chatItem.notifyChanged()
+                                    }
 
-                                        override fun onCancelled(error: DatabaseError) {
-                                        }
-                                    })
-                            }
+                                    override fun onCancelled(error: DatabaseError) {
+                                    }
+                                })
                         }
                     }
                 }
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-            }
-        })
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                    val chatItem = chats[snapshot.child("id").getValue(String::class.java)]
+                    groupAdapter.remove(chatItem!!)
+                    groupAdapter.add(0, chatItem)
+                }
+
+                override fun onChildRemoved(snapshot: DataSnapshot) {
+                    val id = snapshot.child("id").getValue(String::class.java)
+                    val chatItem = chats[id]
+                    groupAdapter.remove(chatItem!!)
+                    chats.remove(id)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                }
+            })
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
