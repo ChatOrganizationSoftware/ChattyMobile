@@ -197,18 +197,18 @@ class SettingsPage: AppCompatActivity() {
                         }
                     }
 
-                    FirebaseDatabase.getInstance().getReference("/users/$uid").removeValue()
                     FirebaseAuth.getInstance().currentUser?.delete()
-                        ?.addOnCompleteListener {
+                        ?.addOnCompleteListener { task ->
+                            // Account deletion successful
+                            FirebaseDatabase.getInstance().getReference("/users/$uid").removeValue()
                             FirebaseAuth.getInstance().signOut()
-
                             val intent = Intent(this@SettingsPage, LoginPage::class.java)
                             startActivity(intent)
                             finishAffinity()
                         }
 
 
-                }
+                            }
                 .setNegativeButton("No", null)
                 .show()
         }

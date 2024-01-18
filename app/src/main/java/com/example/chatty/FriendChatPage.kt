@@ -27,7 +27,6 @@ import com.google.firebase.Timestamp
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 
 
@@ -37,10 +36,22 @@ class FriendChatPage : AppCompatActivity() {
     private lateinit var friendChatProfilePhoto: CircleImageView
     private lateinit var sendIcon: ImageView
     private lateinit var chatName: TextView
-    private var chat: IndividualChat? = null
     private var groupAdapter = GroupAdapter<GroupieViewHolder>()
     private var databaseRef = FirebaseDatabase.getInstance()
     private var uid = FirebaseAuth.getInstance().uid
+    private var friendId: String? = null
+    private var messageCount = 0
+
+    private val readListener = object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            if (snapshot.exists() && snapshot.getValue(Boolean::class.java) == false)
+                snapshot.ref.setValue(true)
+        }
+
+        override fun onCancelled(error: DatabaseError) {
+            // Handle onCancelled if needed
+        }
+    }
 
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,18 +83,9 @@ class FriendChatPage : AppCompatActivity() {
         setContentView(R.layout.friend_chat_page)
 
         val chatId = intent.getStringExtra("CHAT_ID")!!
-        val friendId = intent.getStringExtra("FRIEND_ID")!!
+        friendId = intent.getStringExtra("FRIEND_ID")!!
 
-        databaseRef.getReference("/users/$uid/chats/$friendId/read")
-            .addValueEventListener(object: ValueEventListener{
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if(snapshot.exists() && snapshot.getValue(Boolean::class.java) == false)
-                        snapshot.ref.setValue(true)
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                }
-            })
+        databaseRef.getReference("/users/$uid/chats/$friendId/read").addValueEventListener(readListener)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -109,6 +111,8 @@ class FriendChatPage : AppCompatActivity() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if(!snapshot.exists())
                         finish()
+                    else
+                        messageCount = snapshot.child("Messages").childrenCount.toInt()
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -152,8 +156,10 @@ class FriendChatPage : AppCompatActivity() {
             if(text!="") {
                 enteredMessage.setText("")
                 val ref = databaseRef.getReference("/IndividualChats/${chatId}/Messages").push()
-                val message = IndividualMessage( ref.key!!, text, uid!!)
+
+                val message = IndividualMessage(text, uid!!)
                 ref.setValue(message).addOnSuccessListener {
+                    recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     val time = Timestamp.now().seconds
                     databaseRef.getReference("/users/$friendId/chats/$uid/read").setValue(false)
                     databaseRef.getReference("/users/$friendId/chats/$uid/time").setValue(time)
@@ -171,19 +177,24 @@ class FriendChatPage : AppCompatActivity() {
 
     // Gets the all previous messages in the chat from the firebase
     private fun listenMessages(chatId: String){
+        var i = 0
         databaseRef.getReference("/IndividualChats/${chatId}/Messages").addChildEventListener(object: ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 if(snapshot.exists()) {
-                    val message = IndividualMessage()
-                    message.message = snapshot.child("message").getValue(String::class.java)
-                    message.senderId = snapshot.child("senderId").getValue(String::class.java)!!
-                    message.id = snapshot.key.toString()
-
-                    if (uid == message.senderId) {
+                    val message = snapshot.getValue(IndividualMessage::class.java)
+                    if (uid == message!!.senderId) {
                         groupAdapter.add(FriendChatToItem(message.message!!))
-                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                    } else
+                        if(i<0)
+                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                    }
+                    else
                         groupAdapter.add(FriendChatFromItem(message.message!!))
+
+                    i++
+                    if(i==messageCount) {
+                        recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                        i = -99999999
+                    }
                 }
             }
 
@@ -210,6 +221,11 @@ class FriendChatPage : AppCompatActivity() {
             // Handle other menu items if needed
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        databaseRef.getReference("/users/$uid/chats/$friendId/read").removeEventListener(readListener)
     }
 }
 

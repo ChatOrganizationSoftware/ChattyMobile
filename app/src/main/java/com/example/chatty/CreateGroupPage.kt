@@ -169,8 +169,7 @@ class CreateGroupPage : AppCompatActivity() {
                                 .addListenerForSingleValueEvent(object : ValueEventListener {
                                     override fun onDataChange(snapshot: DataSnapshot) {
                                         val chat = Chat(userId!!, false)
-                                        chat.name = snapshot.child("username")
-                                            .getValue(String::class.java)
+                                        chat.name = snapshot.child("username").getValue(String::class.java).toString()
                                         chat.photoURI = snapshot.child("profilePhoto")
                                             .getValue(String::class.java)
                                         groupAdapter.add(GroupUserItem(chat))

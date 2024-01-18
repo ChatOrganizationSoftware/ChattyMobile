@@ -191,7 +191,7 @@ class GroupUpdatePage : AppCompatActivity() {
                                         if (snapshot.exists()) {
                                             val chat = Chat(userId!!, false)
                                             chat.name = snapshot.child("username")
-                                                .getValue(String::class.java)
+                                                .getValue(String::class.java).toString()
                                             chat.photoURI = snapshot.child("profilePhoto")
                                                 .getValue(String::class.java)
                                             groupAdapter.add(GroupUserItem(chat))

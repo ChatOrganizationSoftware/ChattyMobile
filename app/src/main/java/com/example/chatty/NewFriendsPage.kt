@@ -152,7 +152,7 @@ class NewFriendsPage : AppCompatActivity() {
                 snapshot.children.forEach{
                     if (it.child("visibility").getValue(String::class.java) =="Public" && it.key != FirebaseAuth.getInstance().uid && !friends.contains(it.key) && !blockedBy.contains(it.key) && it.child("active").getValue(Boolean::class.java) == true){
                         val chat = Chat(it.key!!, false)
-                        chat.name = it.child("username").getValue(String::class.java)
+                        chat.name = it.child("username").getValue(String::class.java).toString()
                         chat.photoURI = it.child("profilePhoto").getValue(String::class.java)
                         groupAdapter.add(NewUserItem(chat))
                     }

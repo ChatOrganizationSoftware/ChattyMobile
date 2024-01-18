@@ -44,6 +44,17 @@ class GroupChatPage : AppCompatActivity() {
     private var uid = FirebaseAuth.getInstance().uid
     private var listened = false
     private lateinit var admin : String
+    private val readListener = object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            if (snapshot.exists() && snapshot.getValue(Boolean::class.java) == false)
+                snapshot.ref.setValue(true)
+        }
+
+        override fun onCancelled(error: DatabaseError) {
+            // Handle onCancelled if needed
+        }
+    }
+    private var messageCount = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -61,16 +72,7 @@ class GroupChatPage : AppCompatActivity() {
 
         groupId = intent.getStringExtra("GROUP_ID")!!
 
-        databaseRef.getReference("/users/$uid/chats/$groupId/read")
-            .addValueEventListener(object: ValueEventListener{
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if(snapshot.exists() && snapshot.getValue(Boolean::class.java) == false)
-                        snapshot.ref.setValue(true)
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                }
-            })
+        databaseRef.getReference("/users/$uid/chats/$groupId/read").addValueEventListener(readListener)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -96,6 +98,8 @@ class GroupChatPage : AppCompatActivity() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if(!snapshot.exists())
                         finish()
+                    else
+                        messageCount = snapshot.child("Messages").childrenCount.toInt()
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -230,9 +234,9 @@ class GroupChatPage : AppCompatActivity() {
             if(text!="") {
                 enteredMessage.setText("")
                 val ref = databaseRef.getReference("/GroupChats/${groupId}/Messages").push()
-
-                val message = IndividualMessage( ref.key!!, text, uid!!)
+                val message = IndividualMessage(text, uid!!)
                 ref.setValue(message).addOnSuccessListener {
+                    recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     val time = Timestamp.now().seconds
                     for(member in members!!){
                         databaseRef.getReference("/users/$member/chats/$groupId/time").setValue(time)
@@ -249,20 +253,28 @@ class GroupChatPage : AppCompatActivity() {
 
     // Gets the all messages in the group rom the firebase
     private fun listenMessages(){
+        var i = 0
         databaseRef.getReference("/GroupChats/${groupId}/Messages")
             .addChildEventListener(object: ChildEventListener{
                 override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                    val message = snapshot.getValue(IndividualMessage::class.java)
+                    if(snapshot.exists()) {
+                        val message = snapshot.getValue(IndividualMessage::class.java)
 
-                    if(message == null)
-                        showToast("NULL")
-                    else {
-                        if (uid == message.senderId) {
-                            groupAdapter.add(FriendChatToItem(message.message!!))
-                            recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
-                        } else {
-                            val sender = memberNames?.get(message.senderId)
-                            groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
+                        if (message != null){
+                            if (uid == message.senderId) {
+                                groupAdapter.add(FriendChatToItem(message.message!!))
+                                if(i<0)
+                                    recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                            }
+                            else {
+                                val sender = memberNames?.get(message.senderId)
+                                groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
+                            }
+                            i++
+                            if(i==messageCount) {
+                                recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
+                                i = -99999999
+                            }
                         }
                     }
                 }
@@ -290,6 +302,11 @@ class GroupChatPage : AppCompatActivity() {
             // Handle other menu items if needed
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        databaseRef.getReference("/users/$uid/chats/$groupId/read").removeEventListener(readListener)
     }
 }
 
