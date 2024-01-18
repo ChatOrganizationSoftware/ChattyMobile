@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
@@ -12,6 +13,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -29,6 +31,11 @@ import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
 import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
+import java.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.SecretKey
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class GroupChatPage : AppCompatActivity() {
     private lateinit var enteredMessage: EditText
@@ -55,7 +62,9 @@ class GroupChatPage : AppCompatActivity() {
         }
     }
     private var messageCount = 0
+    private var chatKey:SecretKey? = null
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
 
         val isDarkTheme = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
@@ -95,6 +104,7 @@ class GroupChatPage : AppCompatActivity() {
 
         databaseRef.getReference("/GroupChats/$groupId")
             .addValueEventListener(object: ValueEventListener{
+                @RequiresApi(Build.VERSION_CODES.O)
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if(!snapshot.exists())
                         finish()
@@ -106,6 +116,15 @@ class GroupChatPage : AppCompatActivity() {
                 }
             })
 
+        databaseRef.getReference("/GroupChats/$groupId/key")
+            .addListenerForSingleValueEvent(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    chatKey = getKeyFromString(snapshot.getValue(String::class.java).toString())
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
         // Gets the group information from the firebase
         databaseRef.getReference("/GroupChats/${groupId}/name")
             .addListenerForSingleValueEvent(object : ValueEventListener {
@@ -234,7 +253,7 @@ class GroupChatPage : AppCompatActivity() {
             if(text!="") {
                 enteredMessage.setText("")
                 val ref = databaseRef.getReference("/GroupChats/${groupId}/Messages").push()
-                val message = IndividualMessage(text, uid!!)
+                val message = IndividualMessage(encrypt(text), uid!!)
                 ref.setValue(message).addOnSuccessListener {
                     recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     val time = Timestamp.now().seconds
@@ -247,6 +266,35 @@ class GroupChatPage : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun getKeyFromString(encodedKeyString: String): SecretKey {
+        val decodedKey = Base64.getDecoder().decode(encodedKeyString)
+        return SecretKeySpec(decodedKey, "AES")
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun encrypt(message: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val iv = ByteArray(16)  // Generate an initialization vector (IV)
+        val ivSpec = IvParameterSpec(iv)
+        val keySpec = SecretKeySpec(chatKey!!.encoded, "AES")
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec)
+        val encrypted = cipher.doFinal(message.toByteArray())
+        return Base64.getEncoder().encodeToString(encrypted)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun decrypt(encryptedMessage: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val iv = ByteArray(16)  // Retrieve the same IV used for encryption
+        val ivSpec = IvParameterSpec(iv)
+        val keySpec = SecretKeySpec(chatKey!!.encoded, "AES")
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
+        val encryptedBytes = Base64.getDecoder().decode(encryptedMessage)
+        val decrypted = cipher.doFinal(encryptedBytes)
+        return decrypted.toString(Charsets.UTF_8)
+    }
+
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
@@ -256,19 +304,20 @@ class GroupChatPage : AppCompatActivity() {
         var i = 0
         databaseRef.getReference("/GroupChats/${groupId}/Messages")
             .addChildEventListener(object: ChildEventListener{
+                @RequiresApi(Build.VERSION_CODES.O)
                 override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                     if(snapshot.exists()) {
                         val message = snapshot.getValue(IndividualMessage::class.java)
 
                         if (message != null){
                             if (uid == message.senderId) {
-                                groupAdapter.add(FriendChatToItem(message.message!!))
+                                groupAdapter.add(FriendChatToItem(decrypt(message.message!!)))
                                 if(i<0)
                                     recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                             }
                             else {
                                 val sender = memberNames?.get(message.senderId)
-                                groupAdapter.add(GroupChatFromItem(message.message!!, sender!!))
+                                groupAdapter.add(GroupChatFromItem(decrypt(message.message!!), sender!!))
                             }
                             i++
                             if(i==messageCount) {

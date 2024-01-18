@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
@@ -13,6 +14,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -28,6 +30,11 @@ import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
+import java.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.SecretKey
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 
 class FriendChatPage : AppCompatActivity() {
@@ -41,6 +48,7 @@ class FriendChatPage : AppCompatActivity() {
     private var uid = FirebaseAuth.getInstance().uid
     private var friendId: String? = null
     private var messageCount = 0
+    private var chatKey: SecretKey? = null
 
     private val readListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
@@ -53,6 +61,7 @@ class FriendChatPage : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("SuspiciousIndentation")
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -108,11 +117,23 @@ class FriendChatPage : AppCompatActivity() {
 
         databaseRef.getReference("/IndividualChats/$chatId")
             .addValueEventListener(object: ValueEventListener{
+                @RequiresApi(Build.VERSION_CODES.O)
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if(!snapshot.exists())
                         finish()
                     else
                         messageCount = snapshot.child("Messages").childrenCount.toInt()
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                }
+            })
+
+        databaseRef.getReference("IndividualChats/$chatId/key")
+            .addListenerForSingleValueEvent(object: ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    chatKey = getKeyFromString(snapshot.getValue(String::class.java).toString())
+                    listenMessages(chatId)
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -137,8 +158,6 @@ class FriendChatPage : AppCompatActivity() {
                 }
             })
 
-        listenMessages(chatId)
-
         // Go to user's profile page
         friendChatProfilePhoto.setOnClickListener {
             enteredMessage.clearFocus() // Clear focus from EditText
@@ -157,7 +176,7 @@ class FriendChatPage : AppCompatActivity() {
                 enteredMessage.setText("")
                 val ref = databaseRef.getReference("/IndividualChats/${chatId}/Messages").push()
 
-                val message = IndividualMessage(text, uid!!)
+                val message = IndividualMessage(encrypt(text), uid!!)
                 ref.setValue(message).addOnSuccessListener {
                     recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     val time = Timestamp.now().seconds
@@ -169,6 +188,34 @@ class FriendChatPage : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun encrypt(message: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val iv = ByteArray(16)  // Generate an initialization vector (IV)
+        val ivSpec = IvParameterSpec(iv)
+        val keySpec = SecretKeySpec(chatKey!!.encoded, "AES")
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec)
+        val encrypted = cipher.doFinal(message.toByteArray())
+        return Base64.getEncoder().encodeToString(encrypted)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun decrypt(encryptedMessage: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val iv = ByteArray(16)  // Retrieve the same IV used for encryption
+        val ivSpec = IvParameterSpec(iv)
+        val keySpec = SecretKeySpec(chatKey!!.encoded, "AES")
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
+        val encryptedBytes = Base64.getDecoder().decode(encryptedMessage)
+        val decrypted = cipher.doFinal(encryptedBytes)
+        return decrypted.toString(Charsets.UTF_8)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun getKeyFromString(encodedKeyString: String): SecretKey {
+        val decodedKey = Base64.getDecoder().decode(encodedKeyString)
+        return SecretKeySpec(decodedKey, "AES")
+    }
 
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
@@ -179,16 +226,17 @@ class FriendChatPage : AppCompatActivity() {
     private fun listenMessages(chatId: String){
         var i = 0
         databaseRef.getReference("/IndividualChats/${chatId}/Messages").addChildEventListener(object: ChildEventListener {
+            @RequiresApi(Build.VERSION_CODES.O)
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 if(snapshot.exists()) {
                     val message = snapshot.getValue(IndividualMessage::class.java)
                     if (uid == message!!.senderId) {
-                        groupAdapter.add(FriendChatToItem(message.message!!))
+                        groupAdapter.add(FriendChatToItem(decrypt(message.message!!)))
                         if(i<0)
                             recyclerChatLog.scrollToPosition(groupAdapter.itemCount - 1)
                     }
                     else
-                        groupAdapter.add(FriendChatFromItem(message.message!!))
+                        groupAdapter.add(FriendChatFromItem(decrypt(message.message!!)))
 
                     i++
                     if(i==messageCount) {

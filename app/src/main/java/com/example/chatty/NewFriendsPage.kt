@@ -1,6 +1,7 @@
 package com.example.chatty
 
 import android.content.Intent
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.Editable
@@ -9,6 +10,7 @@ import android.view.MenuItem
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.Timestamp
@@ -27,7 +29,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Base64
 import java.util.UUID
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
 
 class NewFriendsPage : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
@@ -41,6 +46,7 @@ class NewFriendsPage : AppCompatActivity() {
 
     private var searchJob: Job? = null
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
 
         val isDarkTheme = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
@@ -112,6 +118,7 @@ class NewFriendsPage : AppCompatActivity() {
                         FirebaseAuth.getInstance().uid!!,
                         userItem.chat.id
                     )
+                    chat.key = generateKey()
                     val chatRef = databaseRef.getReference("/IndividualChats/${chatId}")
                     chatRef.setValue(chat).addOnFailureListener {
                         showToast("Error: Couldn't create the chat")
@@ -138,6 +145,12 @@ class NewFriendsPage : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun generateKey(): String {
+        val key = KeyGenerator.getInstance("AES").generateKey()
+        return Base64.getEncoder().encodeToString(key.encoded)
     }
 
     companion object{

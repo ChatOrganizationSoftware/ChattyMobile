@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.Menu
@@ -13,6 +14,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
@@ -28,7 +30,9 @@ import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.GroupieViewHolder
 import com.xwray.groupie.Item
 import de.hdodenhof.circleimageview.CircleImageView
+import java.util.Base64
 import java.util.UUID
+import javax.crypto.KeyGenerator
 
 class CreateGroupPage : AppCompatActivity() {
 
@@ -48,6 +52,7 @@ class CreateGroupPage : AppCompatActivity() {
 
     private val databaseRef = FirebaseDatabase.getInstance()
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
 
         val isDarkTheme = getSharedPreferences("MyAppPreferences", MODE_PRIVATE)
@@ -204,6 +209,7 @@ class CreateGroupPage : AppCompatActivity() {
     }
 
     // Stores the group image in the Firebase Storage
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun saveNewImage(){
         val groupId = UUID.randomUUID().toString()
         if(newImage == null)            // If the user didn't select any image
@@ -222,10 +228,12 @@ class CreateGroupPage : AppCompatActivity() {
     }
 
     // Creates the group with the given image URI
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun createGroup(profileImageUri: String, groupId: String){
         group.groupId = groupId
         group.adminId = uid!!
         group.groupPhoto = profileImageUri
+        group.key = generateKey()
         // Add the group to all the members' chat list
         databaseRef.getReference("/GroupChats/${groupId}").setValue(group).addOnCompleteListener {
             val time = Timestamp.now().seconds
@@ -246,6 +254,12 @@ class CreateGroupPage : AppCompatActivity() {
                     finish()
                 }
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun generateKey(): String {
+        val key = KeyGenerator.getInstance("AES").generateKey()
+        return Base64.getEncoder().encodeToString(key.encoded)
     }
 
     // Inserting menu onto toolbar

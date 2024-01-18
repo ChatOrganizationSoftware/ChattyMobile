@@ -87,6 +87,7 @@
                 android:ems="10"
                 android:hint="Enter Message"
                 android:inputType="text"
+                android:maxLength="1000"
                 android:paddingStart="20dp"
                 android:paddingEnd="10dp"
                 android:textSize="20sp"
